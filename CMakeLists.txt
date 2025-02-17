@@ -16,3 +16,8 @@ target_link_libraries(falcon PUBLIC spdlog::spdlog_header_only fmt::fmt-header-o
 add_subdirectory(externals)
 add_subdirectory(samples)
 add_subdirectory(tests)
+
+
+if(WIN32)
+    target_link_libraries(falcon PRIVATE Ws2_32)
+endif()

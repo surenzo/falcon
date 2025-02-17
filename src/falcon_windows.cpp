@@ -59,7 +59,7 @@ std::string IpToString(const sockaddr* sa)
 sockaddr StringToIp(const std::string& ip, uint16_t port)
 {
     sockaddr result {};
-    int error = inet_pton(AF_INET, ip.c_str(), &result);
+    int error = inet_pton(AF_INET, ip.c_str(), &reinterpret_cast<sockaddr_in*>(&result)->sin_addr);
     if (error == 1) {
         result.sa_family = AF_INET;
         reinterpret_cast<sockaddr_in*>(&result)->sin_port = htons(port);
@@ -67,7 +67,7 @@ sockaddr StringToIp(const std::string& ip, uint16_t port)
     }
 
     memset(&result, 0, sizeof(result));
-    error = inet_pton(AF_INET6, ip.c_str(), &result);
+    error = inet_pton(AF_INET6, ip.c_str(), &reinterpret_cast<sockaddr_in6*>(&result)->sin6_addr);
     if (error == 1) {
         result.sa_family = AF_INET6;
         reinterpret_cast<sockaddr_in6*>(&result)->sin6_port = htons(port);
