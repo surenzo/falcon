@@ -91,6 +91,7 @@ Falcon::~Falcon() {
 
 std::unique_ptr<Falcon> Falcon::Listen(const std::string& endpoint, uint16_t port)
 {
+    static WinSockInitializer winsockInitializer;
     sockaddr local_endpoint = StringToIp(endpoint, port);
     auto falcon = std::make_unique<Falcon>();
     falcon->m_socket = socket(local_endpoint.sa_family,
@@ -105,100 +106,56 @@ std::unique_ptr<Falcon> Falcon::Listen(const std::string& endpoint, uint16_t por
     return falcon;
 }
 
+
+
+
 std::unique_ptr<Falcon> Falcon::ConnectTo(const std::string& serverIp, uint16_t port)
 {
-    sockaddr local_endpoint = StringToIp(serverIp, port);
+    static WinSockInitializer winsockInitializer;
+
+    // Crée une instance de Falcon et établit la connexion
+    sockaddr server_endpoint = StringToIp(serverIp, port);
     auto falcon = std::make_unique<Falcon>();
-    falcon->m_socket = socket(local_endpoint.sa_family,
-        SOCK_DGRAM,
-        IPPROTO_UDP);
-    if (int error = bind(falcon->m_socket, &local_endpoint, sizeof(local_endpoint)); error != 0)
-    {
-        closesocket(falcon->m_socket);
+
+    // Crée le socket UDP
+    falcon->m_socket = socket(server_endpoint.sa_family, SOCK_DGRAM, IPPROTO_UDP);
+    if (falcon->m_socket == INVALID_SOCKET) {
+        std::cerr << "Error creating socket: " << WSAGetLastError() << std::endl;
         return nullptr;
     }
+
+    // Envoie un message de connexion au serveur
+    const std::string message = "Hello from client!";
+    std::span<const char> msg_span(message.data(), message.size());
+    int send_result = falcon->SendToInternal(serverIp, port, msg_span);
+
+    if (send_result < 0) {
+        std::cerr << "Error sending connection message" << std::endl;
+        return nullptr;
+    }
+
+    // Connexion réussie, appel de l'événement de connexion
+    uint64_t clientId = m_nextClientId++;
+    falcon->TriggerConnectionEvent(true, clientId); // Connexion réussie
 
     return falcon;
 }
 
-
-
 void Falcon::Disconnect()
 {
     if (m_socket != INVALID_SOCKET) {
-        if (int error = closesocket(m_socket); error != 0)
-        {
-            std::cerr << "Erreur de fermeture de la socket: " << error << std::endl;
+        // Fermeture de la socket
+        if (closesocket(m_socket) != 0) {
+            std::cerr << "Error closing socket: " << WSAGetLastError() << std::endl;
         }
-        closesocket(m_socket);
         m_socket = INVALID_SOCKET;
     }
-    if (m_disconnectHandler) {
-        m_disconnectHandler();
-    }
+
+    // Appel de l'événement de déconnexion
+    TriggerDisconnectEvent();
 }
 
-void Falcon::OnClientConnected(std::function<void(uint64_t)> handler)
-{
-    m_clientConnectedHandler = handler;
-}
 
-void Falcon::OnClientDisconnected(std::function<void(uint64_t)> handler)
-{
-    m_clientDisconnectedHandler = handler;
-}
-
-void Falcon::OnConnectionEvent(std::function<void(bool, uint64_t)> handler)
-{
-    m_connectionEventHandler = handler;
-}
-
-void Falcon::OnDisconnect(std::function<void()> handler)
-{
-    m_disconnectHandler = handler;
-}
-
-void Falcon::TriggerClientConnected(uint64_t clientId)
-{
-    if (m_clientConnectedHandler) {
-        m_clientConnectedHandler(clientId);
-    }
-}
-
-void Falcon::TriggerClientDisconnected(uint64_t clientId)
-{
-    if (m_clientDisconnectedHandler) {
-        m_clientDisconnectedHandler(clientId);
-    }
-}
-
-void Falcon::TriggerConnectionEvent(bool success, uint64_t clientId)
-{
-    if (m_connectionEventHandler) {
-        m_connectionEventHandler(success, clientId);
-    }
-}
-
-void Falcon::TriggerDisconnectEvent()
-{
-    if (m_disconnectHandler) {
-        m_disconnectHandler();
-    }
-}
-
-void Falcon::HandleTimeout()
-{
-    auto now = std::chrono::steady_clock::now();
-    for (auto it = m_clients.begin(); it != m_clients.end();) {
-        auto duration = std::chrono::duration_cast<std::chrono::seconds>(now - it->second);
-        if (duration.count() > 1) {
-            TriggerClientDisconnected(it->first);
-            it = m_clients.erase(it);
-        } else {
-            ++it;
-        }
-    }
-}
 
 
 int Falcon::SendToInternal(const std::string &to, uint16_t port, std::span<const char> message)
