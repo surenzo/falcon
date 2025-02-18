@@ -113,18 +113,18 @@ std::unique_ptr<Falcon> Falcon::ConnectTo(const std::string& serverIp, uint16_t 
 {
     static WinSockInitializer winsockInitializer;
 
-    // Crée une instance de Falcon et établit la connexion
+    
     sockaddr server_endpoint = StringToIp(serverIp, port);
     auto falcon = std::make_unique<Falcon>();
 
-    // Crée le socket UDP
+    
     falcon->m_socket = socket(server_endpoint.sa_family, SOCK_DGRAM, IPPROTO_UDP);
     if (falcon->m_socket == INVALID_SOCKET) {
         std::cerr << "Error creating socket: " << WSAGetLastError() << std::endl;
         return nullptr;
     }
 
-    // Envoie un message de connexion au serveur
+    
     const std::string message = "Hello from client!";
     std::span<const char> msg_span(message.data(), message.size());
     int send_result = falcon->SendToInternal(serverIp, port, msg_span);
@@ -134,7 +134,7 @@ std::unique_ptr<Falcon> Falcon::ConnectTo(const std::string& serverIp, uint16_t 
         return nullptr;
     }
 
-    // Connexion réussie, appel de l'événement de connexion
+    
     uint64_t clientId = m_nextClientId++;
     falcon->TriggerConnectionEvent(true, clientId); // Connexion réussie
 
@@ -144,14 +144,14 @@ std::unique_ptr<Falcon> Falcon::ConnectTo(const std::string& serverIp, uint16_t 
 void Falcon::Disconnect()
 {
     if (m_socket != INVALID_SOCKET) {
-        // Fermeture de la socket
+        
         if (closesocket(m_socket) != 0) {
             std::cerr << "Error closing socket: " << WSAGetLastError() << std::endl;
         }
         m_socket = INVALID_SOCKET;
     }
 
-    // Appel de l'événement de déconnexion
+   
     TriggerDisconnectEvent();
 }
 

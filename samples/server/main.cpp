@@ -29,7 +29,7 @@ int main()
 }
 
 void Listen(uint16_t port) {
-    //possiblement faire un fork en while true ?
+   
 
     auto falcon = Falcon::Listen("127.0.0.1", port);
     while (true) {
@@ -50,7 +50,7 @@ void Listen(uint16_t port) {
             
             if (mapAddresses.find(ip) == mapAddresses.end()) {
                 mapAddresses[ip] = port;
-                //jouer onclientconnected en envoyant au client un message (
+                
             }
 
         }).detach();

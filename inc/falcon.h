@@ -40,13 +40,7 @@ public:
     void OnConnectionEvent(std::function<void(bool, uint64_t)> handler);
     void OnDisconnect(std::function<void()> handler);
 
-    // Stream
-    std::unique_ptr<Stream> CreateStream(uint64_t client, bool reliable); // Server
-    std::unique_ptr<Stream> CreateStream(bool reliable); // Client
-    void CloseStream(const Stream& stream);
-
-    void SendData(const Stream& stream, std::span<const char> data);
-    void OnDataReceived(const Stream& stream, std::span<const char> data);
+  
 
 private:
     int SendToInternal(const std::string& to, uint16_t port, std::span<const char> message);

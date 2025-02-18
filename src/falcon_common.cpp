@@ -61,28 +61,7 @@ void Falcon::TriggerDisconnectEvent()
     }
 }
 
-// Gestion des streams
-std::unique_ptr<Stream> Falcon::CreateStream(uint64_t client, bool reliable) {
-    uint64_t streamId = m_nextClientId++;
-    return std::make_unique<Stream>(streamId, reliable);
-}
 
-std::unique_ptr<Stream> Falcon::CreateStream(bool reliable) {
-    uint64_t streamId = m_nextClientId++;
-    return std::make_unique<Stream>(streamId, reliable);
-}
-
-void Falcon::CloseStream(const Stream& stream) {
-    // Logique pour fermer un stream
-}
-
-void Falcon::SendData(const Stream& stream, std::span<const char> data) {
-    // Logic to send data using the stream
-}
-
-void Falcon::OnDataReceived(const Stream& stream, std::span<const char> data) {
-    // Handle received data for the stream
-}
 
 void Falcon::HandleTimeout()
 {

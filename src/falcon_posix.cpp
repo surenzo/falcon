@@ -92,18 +92,18 @@ std::unique_ptr<Falcon> Falcon::Listen(const std::string& endpoint, uint16_t por
 
 std::unique_ptr<Falcon> Falcon::ConnectTo(const std::string& serverIp, uint16_t port)
 {
-    // Crée une instance de Falcon
+    
     sockaddr server_endpoint = StringToIp(serverIp, port);
     auto falcon = std::make_unique<Falcon>();
 
-    // Crée le socket UDP
+    
     falcon->m_socket = socket(server_endpoint.sa_family, SOCK_DGRAM, IPPROTO_UDP);
     if (falcon->m_socket < 0) {
         std::cerr << "Error creating socket" << std::endl;
         return nullptr;
     }
 
-    // Envoie un message de connexion au serveur
+    
     const std::string message = "Hello from client!";
     std::span<const char> msg_span(message.data(), message.size());
     int send_result = falcon->SendToInternal(serverIp, port, msg_span);
@@ -113,9 +113,9 @@ std::unique_ptr<Falcon> Falcon::ConnectTo(const std::string& serverIp, uint16_t 
         return nullptr;
     }
 
-    // Connexion réussie, appel de l'événement de connexion
+    
     uint64_t clientId = m_nextClientId++;
-    falcon->TriggerConnectionEvent(true, clientId); // Connexion réussie
+    falcon->TriggerConnectionEvent(true, clientId);
 
     return falcon;
 }
@@ -124,14 +124,14 @@ std::unique_ptr<Falcon> Falcon::ConnectTo(const std::string& serverIp, uint16_t 
 void Falcon::Disconnect()
 {
     if (m_socket >= 0) {
-        // Fermeture de la socket
+       
         if (close(m_socket) != 0) {
             std::cerr << "Error closing socket" << std::endl;
         }
         m_socket = -1;
     }
 
-    // Appel de l'événement de déconnexion
+    
     TriggerDisconnectEvent();
 }
 
