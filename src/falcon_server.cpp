@@ -2,6 +2,7 @@
 #include <iostream>
 #include "../inc/falcon_API.h"
 #include <random>
+#include <array>
 
 
 FalconServer::FalconServer() {
@@ -39,7 +40,7 @@ void FalconServer::Listen(uint16_t port) {
         from_ip.resize(255);
         std::array<char, 65535> buffer;
 
-        int recv_size = falcon->ReceiveFrom(from_ip, buffer);
+        int recv_size = falcon->ReceiveFrom(from_ip, std::span<char, 65535>(buffer));
         if (recv_size <= 0) continue;
 
 
