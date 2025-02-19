@@ -1,6 +1,7 @@
 ﻿
 #include <iostream>
 #include "../inc/falcon_API.h"
+#include <cstring>
 
 
 FalconClient::FalconClient() {
