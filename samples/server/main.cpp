@@ -29,14 +29,14 @@ int main()
 
     FalconServer falconServer;
 
-    falconServer.OnClientConnected([](uuid128_t client) {
+    falconServer.OnClientConnected([](UUID client) {
         std::cout << "Client connected: " << client << std::endl;
     });
 
-    falconServer.OnClientDisconnected([](uuid128_t client) {
+    falconServer.OnClientDisconnected([](UUID client) {
         std::cout << "Client disconnected: " << client << std::endl;
     });
 
-    falconServer.Listen(5556);
+    falconServer.Listen(5555);
     return EXIT_SUCCESS;
 }

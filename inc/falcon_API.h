@@ -6,17 +6,16 @@
 #include <functional>
 #include <memory>
 #include <string>
-#include <span>
 #include <unordered_map>
 #include <chrono>
 
-typedef uint32_t uuid128_t;
+
+typedef uint64_t UUID;
 
 class FalconServer : Falcon {
 
 public:
-    std::unique_ptr<Stream> CreateStream(uuid128_t client, bool reliable);
-
+    std::unique_ptr<Stream> CreateStream(UUID client, bool reliable);
 
     FalconServer();
     ~FalconServer();
@@ -27,15 +26,15 @@ public:
 
 
     void Listen(uint16_t port);
-    void OnClientConnected(std::function<void(uuid128_t)> handler);
-    void OnClientDisconnected(std::function<void(uuid128_t)> handler);
+    void OnClientConnected(std::function<void(UUID)> handler);
+    void OnClientDisconnected(std::function<void(UUID)> handler);
     void CloseStream(const Stream& stream);
 
 private:
-    std::unordered_map<std::string, uuid128_t> clients;
-    std::unordered_map<uuid128_t, std::chrono::steady_clock::time_point> m_clients;
-    std::function<void(uuid128_t)> m_clientConnectedHandler;
-    std::function<void(uuid128_t)> m_clientDisconnectedHandler;
+    std::unordered_map<std::string, UUID> clients;
+    std::unordered_map<UUID, std::chrono::steady_clock::time_point> m_clients;
+    std::function<void(UUID)> m_clientConnectedHandler;
+    std::function<void(UUID)> m_clientDisconnectedHandler;
     std::unordered_map<uint64_t, std::unique_ptr<Stream>> m_streams;
 
 
@@ -53,15 +52,15 @@ public:
 
 	void ConnectTo(const std::string& ip, uint16_t port);
 
-	void OnConnectionEvent(std::function<void(bool, uint64_t)> handler);
+	void OnConnectionEvent(std::function<void(bool, UUID)> handler);
 
     void OnDisconnect(std::function<void()> handler);
 
     std::unique_ptr<Stream> CreateStream(bool reliable);
 
 private:
-    std::function<void(bool, uint64_t)> m_connectionHandler;
+    std::function<void(bool, UUID)> m_connectionHandler;
     std::function<void()> m_disconnectHandler;
     std::unordered_map<uint64_t, std::unique_ptr<Stream>> m_streams;
-    uuid128_t m_clientId;
+    UUID m_clientId;
 };

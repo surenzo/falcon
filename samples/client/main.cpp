@@ -28,7 +28,7 @@ int main() {
         }
     });
 
-    falcon_client.ConnectTo("127.0.0.1", 5556);
+    falcon_client.ConnectTo("127.0.0.1:5555", 5556);
 
     return EXIT_SUCCESS;
 }

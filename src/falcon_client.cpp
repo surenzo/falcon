@@ -16,7 +16,17 @@ FalconClient::~FalconClient() {
 }
 
 void FalconClient::ConnectTo(const std::string& ip, uint16_t port) {
-    auto falcon = Falcon::Connect(ip, port);
+
+    std::string new_ip = ip;
+    uint16_t new_port = 0;
+    auto pos = ip.find_last_of (':');
+    if (pos != std::string::npos) {
+        new_ip = ip.substr (0,pos);
+        std::string port_str = ip.substr (++pos);
+        new_port = atoi(port_str.c_str());
+    }
+
+    auto falcon = Falcon::Connect(new_ip, port);
     if (!falcon) {
         std::cerr << "Erreur : Impossible de se connecter à " << ip << ":" << port << std::endl;
         return;
@@ -24,16 +34,17 @@ void FalconClient::ConnectTo(const std::string& ip, uint16_t port) {
 
     // 🔥 Étape 1 : Envoyer un paquet de connexion (0x00)
     uint8_t connectionPacket = 0x00;
-    falcon->SendTo(ip, port, std::span {reinterpret_cast<const char*>(&connectionPacket), sizeof(connectionPacket)});
+    falcon->SendTo(new_ip, new_port, std::span {reinterpret_cast<const char*>(&connectionPacket), sizeof(connectionPacket)});
 
     // 🔥 Étape 2 : Attendre un UUID du serveur
-    std::string from_ip = ip;
+    std::string from_ip;
     from_ip.resize(255);
     std::array<char, 65535> buffer;
     int recv_size = falcon->ReceiveFrom(from_ip, buffer);
+    printf("Received %d bytes\n", recv_size);
 
-    if (recv_size == sizeof(uuid128_t)) {
-        memcpy(&m_clientId, buffer.data(), sizeof(uuid128_t));
+    if (recv_size == sizeof(UUID)) {
+        memcpy(&m_clientId, buffer.data(), sizeof(UUID));
 
         if (m_connectionHandler) {
             m_connectionHandler(true, m_clientId);
@@ -45,7 +56,7 @@ void FalconClient::ConnectTo(const std::string& ip, uint16_t port) {
     }
 }
 
-void FalconClient::OnConnectionEvent(std::function<void(bool, uint64_t)> handler){
+void FalconClient::OnConnectionEvent(std::function<void(bool, UUID)> handler){
     m_connectionHandler = handler;
 }
 
