@@ -77,8 +77,9 @@ void FalconServer::Listen(uint16_t port) {
 }
 
 std::unique_ptr<Stream> FalconServer::CreateStream(UUID clientId, bool reliable) {
+    Falcon* falcon = static_cast<Falcon*>(this);
     uint32_t streamId = m_nextStreamId++;
-    auto stream = std::make_unique<Stream>(*this, clientId, streamId, reliable, m_clientIdToAddress.at(clientId).first, m_clientIdToAddress.at(clientId).second);
+    auto stream = std::make_unique<Stream>(*falcon, clientId, streamId, reliable, m_clientIdToAddress.at(clientId).first, m_clientIdToAddress.at(clientId).second);
     m_streams[clientId][streamId] = std::move(stream);
     return std::move(m_streams[clientId][streamId]);
 }

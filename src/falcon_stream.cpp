@@ -7,6 +7,10 @@
 Stream::Stream(Falcon& falcon, uint64_t clientId, uint32_t streamId, bool reliable, const std::string& ip, uint16_t port)
     : m_falcon(falcon), m_clientId(clientId), m_streamId(streamId), m_reliable(reliable), m_ip(ip), m_port(port) {}
 
+Stream::~Stream() {
+
+}
+
 void Stream::SendData(std::span<const char> data) {
 
     std::vector<char> packet;

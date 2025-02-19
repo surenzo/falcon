@@ -70,7 +70,9 @@ void FalconClient::OnDisconnect(std::function<void()> handler){
 }
 
 std::unique_ptr<Stream> FalconClient::CreateStream(bool reliable) {
-    auto stream = std::make_unique<Stream>(*this, m_clientId, m_nextStreamId++, reliable, m_ip, m_port);
+    Falcon* falcon = static_cast<Falcon*>(this);
+    uint32_t streamId = m_nextStreamId++;
+    auto stream = std::make_unique<Stream>(*falcon, m_clientId, streamId, reliable, m_ip, m_port);
     m_streams[m_nextStreamId] = std::move(stream);
     return std::move(m_streams[m_nextStreamId]);
 }
