@@ -2,6 +2,7 @@
 #include <iostream>
 #include "../inc/falcon_API.h"
 #include <cstring>
+#include <array>
 
 
 FalconClient::FalconClient() {
@@ -41,7 +42,7 @@ void FalconClient::ConnectTo(const std::string& ip, uint16_t port) {
     std::string from_ip;
     from_ip.resize(255);
     std::array<char, 65535> buffer;
-    int recv_size = falcon->ReceiveFrom(from_ip, buffer);
+int recv_size = falcon->ReceiveFrom(from_ip, std::span<char, 65535>(buffer));
     printf("Received %d bytes\n", recv_size);
 
     if (recv_size == sizeof(UUID)) {

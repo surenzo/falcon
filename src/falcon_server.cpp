@@ -56,7 +56,7 @@ void FalconServer::Listen(uint16_t port) {
 
 
         // 🔹 Vérifier si c'est un paquet de connexion (0x00)
-        if (buffer[0] == 0x00) {
+        if (buffer.data()[0] == 0x00) {
             if (clients.find(ip) == clients.end()) {
                 UUID clientId = GenerateUUID();
                 clients[ip] = clientId;
