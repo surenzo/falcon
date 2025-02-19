@@ -42,7 +42,7 @@ void FalconClient::ConnectTo(const std::string& ip, uint16_t port) {
     std::string from_ip;
     from_ip.resize(255);
     std::array<char, 65535> buffer;
-int recv_size = falcon->ReceiveFrom(from_ip, std::span<char, 65535>(buffer));
+    int recv_size = falcon->ReceiveFrom(from_ip, std::span<char, 65535>(buffer));
     printf("Received %d bytes\n", recv_size);
 
     if (recv_size == sizeof(UUID)) {
@@ -50,12 +50,15 @@ int recv_size = falcon->ReceiveFrom(from_ip, std::span<char, 65535>(buffer));
 
         if (m_connectionHandler) {
             m_connectionHandler(true, m_clientId);
+            m_ip = new_ip;
+            m_port = new_port;
         }
     } else {
         if (m_connectionHandler) {
             m_connectionHandler(false, 0);
         }
     }
+
 }
 
 void FalconClient::OnConnectionEvent(std::function<void(bool, UUID)> handler){
@@ -67,6 +70,7 @@ void FalconClient::OnDisconnect(std::function<void()> handler){
 }
 
 std::unique_ptr<Stream> FalconClient::CreateStream(bool reliable) {
-    // 🔥 Créer un flux
-    return nullptr;
+    auto stream = std::make_unique<Stream>(*this, m_clientId, m_nextStreamId++, reliable, m_ip, m_port);
+    m_streams[m_nextStreamId] = std::move(stream);
+    return std::move(m_streams[m_nextStreamId]);
 }

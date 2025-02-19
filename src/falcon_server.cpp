@@ -58,10 +58,11 @@ void FalconServer::Listen(uint16_t port) {
 
         // 🔹 Vérifier si c'est un paquet de connexion (0x00)
         if (buffer.data()[0] == 0x00) {
-            if (clients.find(ip) == clients.end()) {
+            if (clients.find(from_ip) == clients.end()) {
                 UUID clientId = GenerateUUID();
-                clients[ip] = clientId;
+                clients[from_ip] = clientId;
                 m_clients[clientId] = std::chrono::steady_clock::now();
+                m_clientIdToAddress[clientId] = std::make_pair(ip, new_port);
 
                 // 🔥 Notifier qu'un nouveau client est connecté
                 if (m_clientConnectedHandler) {
@@ -75,9 +76,11 @@ void FalconServer::Listen(uint16_t port) {
     }
 }
 
-std::unique_ptr<Stream> FalconServer::CreateStream(UUID client, bool reliable) {
-    // 🔥 Créer un flux
-    return nullptr;
+std::unique_ptr<Stream> FalconServer::CreateStream(UUID clientId, bool reliable) {
+    uint32_t streamId = m_nextStreamId++;
+    auto stream = std::make_unique<Stream>(*this, clientId, streamId, reliable, m_clientIdToAddress.at(clientId).first, m_clientIdToAddress.at(clientId).second);
+    m_streams[clientId][streamId] = std::move(stream);
+    return std::move(m_streams[clientId][streamId]);
 }
 
 void FalconServer::OnClientConnected(std::function<void(UUID)> handler) {
@@ -89,5 +92,10 @@ void FalconServer::OnClientDisconnected(std::function<void(UUID)> handler) {
 }
 
 void FalconServer::CloseStream(const Stream& stream) {
-    // 🔥 Fermer un flux
+    m_streams[stream.GetClientId()].erase(stream.GetStreamId());
+    stream.~Stream();
+}
+
+std::pair<std::string, uint16_t> FalconServer::GetClientAddress(uint64_t clientId) const {
+    return m_clientIdToAddress.at(clientId);
 }
