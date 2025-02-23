@@ -55,7 +55,7 @@ void FalconServer::Listen(uint16_t port) {
         switch (static_cast<ProtocolType>(protocolType)) {
             case ProtocolType::Connect:
                 
-                HandleConnect(falcon, ip, buffer);
+                HandleConnect(falcon, ip, buffer, new_port);
                 break;
 
             case ProtocolType::Acknowledgement:
@@ -80,12 +80,12 @@ void FalconServer::Listen(uint16_t port) {
     }
 }
 
-void FalconServer::HandleConnect(std::unique_ptr<Falcon>& falcon, const std::string& from_ip, const std::array<char, 65535>& buffer) {
+void FalconServer::HandleConnect(std::unique_ptr<Falcon>& falcon, const std::string& from_ip, const std::array<char, 65535>& buffer, uint16_t port) {
     if (clients.find(from_ip) == clients.end()) {
         UUID clientId = GenerateUUID(); 
         clients[from_ip] = clientId;
         m_clients[clientId] = std::chrono::steady_clock::now();  
-        m_clientIdToAddress[clientId] = std::make_pair(from_ip, 5555);  
+        m_clientIdToAddress[clientId] = std::make_pair(from_ip, port);
 
         // Notify that a new client has connected.
         if (m_clientConnectedHandler) {
@@ -95,7 +95,7 @@ void FalconServer::HandleConnect(std::unique_ptr<Falcon>& falcon, const std::str
         std::vector<char> message = { static_cast<char>(protocolType) };
         message.insert(message.end(), reinterpret_cast<const char*>(&clientId), reinterpret_cast<const char*>(&clientId) + sizeof(clientId));
 
-        falcon->SendTo(from_ip, 5555, std::span(message.data(), message.size()));
+        falcon->SendTo(from_ip, port, std::span(message.data(), message.size()));
     }
 }
 

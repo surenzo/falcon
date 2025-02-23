@@ -25,7 +25,7 @@ class FalconServer : Falcon {
     
         void Listen(uint16_t port);
     
-        void HandleConnect(std::unique_ptr<Falcon>& falcon, const std::string& from_ip, const std::array<char, 65535>& buffer);
+        void HandleConnect(std::unique_ptr<Falcon>& falcon, const std::string& from_ip, const std::array<char, 65535>& buffer, uint16_t port);
         void SendAcknowledgement(std::unique_ptr<Falcon>& falcon, const std::string& from_ip, uint64_t clientId);
         void SendRecoMessage(std::unique_ptr<Falcon>& falcon, const std::string& from_ip, uint64_t clientId);
         void SendStreamData(std::unique_ptr<Falcon>& falcon, const std::string& from_ip, uint32_t streamId, const std::vector<char>& data);
