@@ -92,32 +92,32 @@ void FalconServer::HandleConnect(std::unique_ptr<Falcon>& falcon, const std::str
             m_clientConnectedHandler(clientId);
         }
         uint8_t protocolType = static_cast<uint8_t>(ProtocolType::Connect);
-        std::vector<char> message = {protocolType};
+        std::vector<char> message = { static_cast<char>(protocolType) };
         message.insert(message.end(), reinterpret_cast<const char*>(&clientId), reinterpret_cast<const char*>(&clientId) + sizeof(clientId));
 
         falcon->SendTo(from_ip, 5555, std::span(message.data(), message.size()));
     }
 }
 
-void FalconServer::SendAcknowledgement(const std::string& from_ip, uint64_t clientId) {
+void FalconServer::SendAcknowledgement(std::unique_ptr<Falcon>& falcon, const std::string& from_ip, uint64_t clientId) {
     uint8_t protocolType = static_cast<uint8_t>(ProtocolType::Acknowledgement);
-    std::vector<char> message = {protocolType};
+    std::vector<char> message = { static_cast<char>(protocolType) };
     message.insert(message.end(), reinterpret_cast<const char*>(&clientId), reinterpret_cast<const char*>(&clientId) + sizeof(clientId));
 
     falcon->SendTo(from_ip, 5555, std::span(message.data(), message.size()));
 }
 
-void FalconServer::SendRecoMessage(const std::string& from_ip, uint64_t clientId) {
+void FalconServer::SendRecoMessage(std::unique_ptr<Falcon>& falcon, const std::string& from_ip, uint64_t clientId) {
     uint8_t protocolType = static_cast<uint8_t>(ProtocolType::Reco);
-    std::vector<char> message = {protocolType};
+    std::vector<char> message = { static_cast<char>(protocolType) };
     message.insert(message.end(), reinterpret_cast<const char*>(&clientId), reinterpret_cast<const char*>(&clientId) + sizeof(clientId));
 
     falcon->SendTo(from_ip, 5555, std::span(message.data(), message.size()));
 }
 
-void FalconServer::SendStreamData(const std::string& from_ip, uint32_t streamId, const std::vector<char>& data) {
+void FalconServer::SendStreamData(std::unique_ptr<Falcon>& falcon,const std::string& from_ip, uint32_t streamId, const std::vector<char>& data) {
     uint8_t protocolType = static_cast<uint8_t>(ProtocolType::Stream);
-    std::vector<char> message = {protocolType};
+    std::vector<char> message = { static_cast<char>(protocolType) };
     message.insert(message.end(), reinterpret_cast<const char*>(&streamId), reinterpret_cast<const char*>(&streamId) + sizeof(streamId));
 
     message.insert(message.end(), data.begin(), data.end());
@@ -143,6 +143,7 @@ void FalconServer::HandleStream(std::unique_ptr<Falcon>& falcon, const std::stri
 
     
 }
+
 
 
 std::unique_ptr<Stream> FalconServer::CreateStream(UUID clientId, bool reliable) {

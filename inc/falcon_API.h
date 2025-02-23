@@ -1,4 +1,19 @@
-﻿class FalconServer : Falcon {
+﻿#pragma once
+#include <array>
+#include <span>
+#include <cstdint>
+#include <chrono>
+#include <atomic>
+#include <vector>
+#include <functional>
+#include <unordered_map>
+#include <memory>
+#include <Stream.h>
+#include <protocol.h>
+#include <thread>
+typedef uint64_t UUID;
+
+class FalconServer : Falcon {
 
     public:
         FalconServer();
@@ -11,9 +26,9 @@
         void Listen(uint16_t port);
     
         void HandleConnect(std::unique_ptr<Falcon>& falcon, const std::string& from_ip, const std::array<char, 65535>& buffer);
-        void SendAcknowledgement(const std::string& from_ip, uint64_t clientId);
-        void SendRecoMessage(const std::string& from_ip, uint64_t clientId);
-        void SendStreamData(const std::string& from_ip, uint32_t streamId, const std::vector<char>& data);
+        void SendAcknowledgement(std::unique_ptr<Falcon>& falcon, const std::string& from_ip, uint64_t clientId);
+        void SendRecoMessage(std::unique_ptr<Falcon>& falcon, const std::string& from_ip, uint64_t clientId);
+        void SendStreamData(std::unique_ptr<Falcon>& falcon, const std::string& from_ip, uint32_t streamId, const std::vector<char>& data);
         void HandleAcknowledgement(const std::string& from_ip, const std::array<char, 65535>& buffer);
         void HandleReco(const std::string& from_ip, const std::array<char, 65535>& buffer);
         void HandleStream(std::unique_ptr<Falcon>& falcon, const std::string& from_ip, const std::array<char, 65535>& buffer);
@@ -34,7 +49,7 @@
         uint32_t m_nextStreamId = 1;
     };
     
-    class FalconClient : Falcon {
+class FalconClient : Falcon {
     
     public:
         FalconClient();
@@ -51,11 +66,13 @@
         void HandleAcknowledgementMessage(const std::array<char, 65535>& buffer);
         void HandleRecoMessage(const std::array<char, 65535>& buffer);
         void HandleStreamMessage(const std::array<char, 65535>& buffer);
-    
+
+        void StopListening();
+
         void OnConnectionEvent(std::function<void(bool, UUID)> handler);
         void OnDisconnect(std::function<void()> handler);
         std::unique_ptr<Stream> CreateStream(bool reliable);
-        void StopListening()
+
 
     
     private:

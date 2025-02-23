@@ -19,8 +19,17 @@ FalconClient::~FalconClient() {
 
 void FalconClient::ConnectTo(const std::string& ip, uint16_t port) {
     
-    m_falcon = Falcon::Connect(ip, port);
-    if (!m_falcon) {
+    std::string new_ip = ip;
+    uint16_t new_port = 0;
+    auto pos = ip.find_last_of (':');
+    if (pos != std::string::npos) {
+        new_ip = ip.substr (0,pos);
+        std::string port_str = ip.substr (++pos);
+        new_port = atoi(port_str.c_str());
+    }
+
+    auto falcon = Falcon::Connect(new_ip, port);
+    if (!falcon) {
         std::cerr << "Erreur : Impossible de se connecter à " << ip << ":" << port << std::endl;
         return;
     }
@@ -32,7 +41,7 @@ void FalconClient::ConnectTo(const std::string& ip, uint16_t port) {
 
    
     uint8_t protocolType = static_cast<uint8_t>(ProtocolType::Connect);
-    std::vector<char> connectMessage = {protocolType};
+    std::vector<char> connectMessage = { static_cast<char>(protocolType) };
 
   
     m_falcon->SendTo(ip, port, std::span(connectMessage.data(), connectMessage.size()));
