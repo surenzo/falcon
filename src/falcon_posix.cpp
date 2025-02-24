@@ -70,7 +70,7 @@ Falcon::~Falcon() {
     }
 }
 
-void Falcon::Listen(const std::string& endpoint, uint16_t port)
+bool Falcon::Listen(const std::string& endpoint, uint16_t port)
 {
     sockaddr local_endpoint = StringToIp(endpoint, port);
     m_socket = socket(local_endpoint.sa_family,
@@ -79,10 +79,12 @@ void Falcon::Listen(const std::string& endpoint, uint16_t port)
     if (int error = bind(m_socket, &local_endpoint, sizeof(local_endpoint)); error != 0)
     {
         close(m_socket);
+        return false;
     }
+	return true;
 }
 
-void Falcon::Connect(const std::string& serverIp, uint16_t port)
+bool Falcon::Connect(const std::string& serverIp, uint16_t port)
 {
     sockaddr local_endpoint = StringToIp(serverIp, port);
     m_socket = socket(local_endpoint.sa_family,
@@ -91,7 +93,9 @@ void Falcon::Connect(const std::string& serverIp, uint16_t port)
     if (int error = bind(m_socket, &local_endpoint, sizeof(local_endpoint)); error != 0)
     {
         close(m_socket);
+        return false;
     }
+	return true;
 }
 
 int Falcon::SendToInternal(const std::string &to, uint16_t port, std::span<const char> message)
