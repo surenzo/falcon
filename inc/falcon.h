@@ -18,8 +18,8 @@ void hello();
 
 class Falcon {
 public:
-    void Listen(const std::string& endpoint, uint16_t port);
-    void Connect(const std::string& serverIp, uint16_t port);
+    bool Listen(const std::string& endpoint, uint16_t port);
+    bool Connect(const std::string& serverIp, uint16_t port);
 
     Falcon();
     ~Falcon();
