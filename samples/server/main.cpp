@@ -27,16 +27,18 @@ int main()
 
 
 
-    FalconServer falconServer;
+    auto falconServer = FalconServer::ListenTo(5555);
 
-    falconServer.OnClientConnected([](UUID client) {
+    falconServer->OnClientConnected([](UUID client) {
         std::cout << "Client connected: " << client << std::endl;
     });
 
-    falconServer.OnClientDisconnected([](UUID client) {
+    falconServer->OnClientDisconnected([](UUID client) {
         std::cout << "Client disconnected: " << client << std::endl;
     });
 
-    falconServer.Listen(5555);
+    while (true) {
+        falconServer->Update();
+    }
     return EXIT_SUCCESS;
 }

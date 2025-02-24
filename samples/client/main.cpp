@@ -18,17 +18,18 @@ int main() {
     // std::array<char, 65535> buffer;
     // falcon->ReceiveFrom(from_ip, buffer);
 
-    FalconClient falcon_client;
+    auto falcon_client = FalconClient::ConnectTo("127.0.0.1:5555", 5556);
 
-    falcon_client.OnConnectionEvent([](bool success, uint64_t client) {
-        if (success) {
-            std::cout << "Connected to server with client id: " << client << std::endl;
-        } else {
-            std::cout << "Failed to connect to server" << std::endl;
-        }
+    falcon_client->OnConnectionEvent([](bool success, UUID client) {
+    if (success) {
+        std::cout << "Connected to server with client id: " << client << std::endl;
+    } else {
+        std::cout << "Failed to connect to server" << std::endl;
+    }
     });
-
-    falcon_client.ConnectTo("127.0.0.1:5555", 5556);
+    while (true) {
+        falcon_client->Update();
+    }
 
     return EXIT_SUCCESS;
 }

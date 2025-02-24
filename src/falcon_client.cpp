@@ -3,6 +3,7 @@
 #include "../inc/falcon_API.h"
 #include <cstring>
 #include <array>
+#include <utility>
 
 
 FalconClient::FalconClient() {
@@ -17,153 +18,93 @@ FalconClient::~FalconClient() {
     Falcon::~Falcon();
 }
 
-void FalconClient::ConnectTo(const std::string& ip, uint16_t port) {
-    
-    std::string new_ip = ip;
+std::unique_ptr<FalconClient> FalconClient::ConnectTo(const std::string& ip, uint16_t port) {
+    std::string new_ip;
     uint16_t new_port = 0;
-    auto pos = ip.find_last_of (':');
-    if (pos != std::string::npos) {
-        new_ip = ip.substr (0,pos);
-        std::string port_str = ip.substr (++pos);
-        new_port = atoi(port_str.c_str());
-    }
+    std::tie(new_ip, new_port) = GetClientAddress(ip);
 
-    auto m_falcon = Falcon::Connect(new_ip, port);
+
+    auto m_falcon = std::make_unique<FalconClient>();
+    m_falcon->Connect("127.0.0.1", port);
     if (!m_falcon) {
         std::cerr << "Erreur : Impossible de se connecter à " << ip << ":" << port << std::endl;
-        return;
+        return nullptr;
     }
-
-    
-    m_isListening = true;
-    std::thread listenerThread(&FalconClient::ListenForMessages, this);
-    listenerThread.detach();
+    m_falcon->StartListening();
 
    
     uint8_t protocolType = static_cast<uint8_t>(ProtocolType::Connect);
     std::vector<char> connectMessage = { static_cast<char>(protocolType) };
 
-  
     m_falcon->SendTo(new_ip, new_port, std::span(connectMessage.data(), connectMessage.size()));
-
+    return m_falcon;
 }
 
 
-/*void FalconClient::ConnectTo(const std::string& ip, uint16_t port) {
+void FalconClient::Update() {
+    // ping the server if the time exceeds 0.1s without receiving any message
 
-    std::string new_ip = ip;
-    uint16_t new_port = 0;
-    auto pos = ip.find_last_of (':');
-    if (pos != std::string::npos) {
-        new_ip = ip.substr (0,pos);
-        std::string port_str = ip.substr (++pos);
-        new_port = atoi(port_str.c_str());
-    }
+    while (true) {
+        auto message = GetNextMessage();
+        if (!message.has_value()) break;
 
-    auto falcon = Falcon::Connect(new_ip, port);
-    if (!falcon) {
-        std::cerr << "Erreur : Impossible de se connecter à " << ip << ":" << port << std::endl;
-        return;
-    }
+        std::array<char, 65535> buffer{};
+        std::ranges::copy(message->first, buffer.begin());
 
-    // 🔥 Étape 1 : Envoyer un paquet de connexion (0x00)
-    uint8_t connectionPacket = static_cast<uint8_t>(ProtocolType::Connect);
-    falcon->SendTo(new_ip, new_port, std::span {reinterpret_cast<const char*>(&connectionPacket), sizeof(connectionPacket)});
+        uint8_t protocolType = buffer[0];
 
 
-    // 🔥 Étape 2 : Attendre un UUID du serveur
-    std::string from_ip;
-    from_ip.resize(255);
-    std::array<char, 65535> buffer;
-    int recv_size = falcon->ReceiveFrom(from_ip, std::span<char, 65535>(buffer));
-    printf("Received %d bytes\n", recv_size);
-
-    if (recv_size == sizeof(UUID)) {
-        memcpy(&m_clientId, buffer.data(), sizeof(UUID));
-
-        if (m_connectionHandler) {
-            m_connectionHandler(true, m_clientId);
-            m_ip = new_ip;
-            m_port = new_port;
-        }
-    } else {
-        if (m_connectionHandler) {
-            m_connectionHandler(false, 0);
-        }
-    }
-
-}*/
-
-void FalconClient::ListenForMessages() {
-    while (m_isListening) {
-        std::array<char, 65535> buffer;
-        std::string from_ip;
-        from_ip.resize(255);
-
-        
-        int recv_size = m_falcon->ReceiveFrom(from_ip, std::span<char, 65535>(buffer));
-        if (recv_size <= 0) continue;
-
-        
-        uint8_t protocolType = buffer.data()[0];
-
-        
         switch (static_cast<ProtocolType>(protocolType)) {
             case ProtocolType::Connect:
                 HandleConnectMessage(buffer);
-                break;
+            break;
 
+            /*
             case ProtocolType::Acknowledgement:
                 HandleAcknowledgementMessage(buffer);
-                break;
-
-            case ProtocolType::Reco:
-                HandleRecoMessage(buffer);
-                break;
+            break;*/
 
             case ProtocolType::Stream:
                 HandleStreamMessage(buffer);
-                break;
+            break;
 
             default:
                 std::cerr << "Paquet inconnu reçu" << std::endl;
-                break;
+            break;
         }
+
     }
 }
 
 void FalconClient::HandleConnectMessage(const std::array<char, 65535>& buffer) {
-    std::cout << "Message de connexion reçu." << std::endl;
+    m_clientId = *reinterpret_cast<const UUID*>(&buffer[1]);
 
-
-    UUID clientId = *reinterpret_cast<const UUID*>(&buffer[1]);
-
-    std::cout << "UUID du client : " << clientId << std::endl;
+    std::cout << "UUID du client : " << m_clientId << std::endl;
 
     if (m_connectionHandler) {
-        m_connectionHandler(true, clientId);
+        m_connectionHandler(true, m_clientId);
     }
 }
 
 
+/*
 void FalconClient::HandleAcknowledgementMessage(const std::array<char, 65535>& buffer) {
    
-    UUID clientId = *reinterpret_cast<const UUID*>(&buffer[1]);
+    uint8_t protocolType = *reinterpret_cast<const UUID*>(&buffer[1]);
+
+    switch (protocolType) {
+        case ProtocolType::Connect:
+            uint64_t clientId = *reinterpret_cast<const UUID*>(&buffer[2]);
+            break;
+        default:
+            std::cerr << "Paquet inconnu reçu Acknowledgement" << std::endl;
+    }
 
     
-    std::cout << "Confirmation (Acknowledgement) reçue pour le client avec UUID: " << clientId << std::endl;
+    std::cout << "Confirmation (Acknowledgement) reçue" << std::endl;
 
     
-}
-
-void FalconClient::HandleRecoMessage(const std::array<char, 65535>& buffer) {
-    
-    UUID clientId = *reinterpret_cast<const UUID*>(&buffer[1]);
-
-    
-    std::cout << "Reconnexion demandée pour le client avec UUID: " << clientId << std::endl;
-
-}
+}*/
 
 
 void FalconClient::HandleStreamMessage(const std::array<char, 65535>& buffer) {
@@ -181,11 +122,11 @@ void FalconClient::HandleStreamMessage(const std::array<char, 65535>& buffer) {
 
 
 void FalconClient::OnConnectionEvent(std::function<void(bool, UUID)> handler){
-    m_connectionHandler = handler;
+    m_connectionHandler = std::move(handler);
 }
 
 void FalconClient::OnDisconnect(std::function<void()> handler){
-    m_disconnectHandler = handler;
+    m_disconnectHandler = std::move(handler);
 }
 
 std::unique_ptr<Stream> FalconClient::CreateStream(bool reliable) {
@@ -194,8 +135,4 @@ std::unique_ptr<Stream> FalconClient::CreateStream(bool reliable) {
     auto stream = std::make_unique<Stream>(*falcon, m_clientId, streamId, reliable, m_ip, m_port);
     m_streams[m_nextStreamId] = std::move(stream);
     return std::move(m_streams[m_nextStreamId]);
-}
-
-void FalconClient::StopListening() {
-    m_isListening = false;
 }
