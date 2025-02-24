@@ -4,6 +4,7 @@
 #include <cstring>
 #include <array>
 #include <utility>
+#include <csignal>
 
 
 FalconClient::FalconClient() {
