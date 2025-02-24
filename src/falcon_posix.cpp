@@ -78,7 +78,7 @@ void Falcon::Listen(const std::string& endpoint, uint16_t port)
         IPPROTO_UDP);
     if (int error = bind(m_socket, &local_endpoint, sizeof(local_endpoint)); error != 0)
     {
-        closesocket(m_socket);
+        close(falcon->m_socket);
     }
 }
 
@@ -90,7 +90,7 @@ void Falcon::Connect(const std::string& serverIp, uint16_t port)
         IPPROTO_UDP);
     if (int error = bind(m_socket, &local_endpoint, sizeof(local_endpoint)); error != 0)
     {
-        closesocket(m_socket);
+        close(falcon->m_socket);
     }
 }
 

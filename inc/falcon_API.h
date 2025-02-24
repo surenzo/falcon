@@ -32,6 +32,7 @@ class FalconServer : Falcon {
         void SendStreamData( const std::string& from_ip, uint32_t streamId, const std::vector<char>& data);
         void HandleAcknowledgement(const std::string& from_ip, const std::array<char, 65535>& buffer);
         void HandleStream(const std::string& from_ip, const std::array<char, 65535>& buffer);
+        void HandlePing(const std::string& from_ip, const std::array<char, 65535>& buffer);
     
         void OnClientConnected(std::function<void(UUID)> handler);
         void OnClientDisconnected(std::function<void(UUID)> handler);
@@ -40,8 +41,9 @@ class FalconServer : Falcon {
 
     private:
         std::unordered_map<std::string, UUID> clients;
-        std::unordered_map<UUID, std::chrono::steady_clock::time_point> m_clients;
-        //std::unordered_map<uint64_t, std::pair<std::string, uint16_t>> m_clientIdToAddress;
+        std::unordered_map<UUID, std::chrono::steady_clock::time_point> m_clients_Ping;
+        std::unordered_map<UUID, std::chrono::steady_clock::time_point> m_clients_Pong;
+        std::unordered_map<uint64_t, std::pair<std::string, uint16_t>> m_clientIdToAddress;
         std::function<void(UUID)> m_clientConnectedHandler;
         std::function<void(UUID)> m_clientDisconnectedHandler;
         std::unordered_map<uint64_t, std::unordered_map<uint32_t, std::unique_ptr<Stream>>> m_streams;
@@ -65,6 +67,7 @@ class FalconClient : Falcon {
         void HandleConnectMessage(const std::array<char, 65535>& buffer);
         void HandleAcknowledgementMessage(const std::array<char, 65535>& buffer);
         void HandleStreamMessage(const std::array<char, 65535>& buffer);
+        void HandlePing(const std::array<char, 65535>& buffer);
 
         void OnConnectionEvent(std::function<void(bool, UUID)> handler);
         void OnDisconnect(std::function<void()> handler);
@@ -76,6 +79,8 @@ class FalconClient : Falcon {
         std::function<void(bool, UUID)> m_connectionHandler;
         std::function<void()> m_disconnectHandler;
         std::unordered_map<uint64_t, std::unique_ptr<Stream>> m_streams;
+        std::chrono::steady_clock::time_point m_lastPing;
+        std::chrono::steady_clock::time_point m_lastPong;
         UUID m_clientId;
         std::string m_ip;
         uint16_t m_port;

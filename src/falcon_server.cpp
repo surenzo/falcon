@@ -6,7 +6,6 @@
 FalconServer::FalconServer() {
     Falcon();
     clients = std::unordered_map<std::string, UUID>();
-    m_clients = std::unordered_map<UUID, std::chrono::steady_clock::time_point>();
 }
 
 FalconServer::~FalconServer() {
@@ -36,13 +35,53 @@ std::unique_ptr<FalconServer> FalconServer::ListenTo(uint16_t port) {
 
 void FalconServer::Update() {
     // ping the server if the time exceeds 0.1s without receiving any message
+    // for any client in the uuid map that has not been pinged for 1 second, disconnect the client
 
+    //  create pool to erase in the map
+    std::vector<UUID> to_erase;
+    for (auto& [clientId, lastPing] : m_clients_Ping) {
+        if (std::chrono::steady_clock::now() - m_clients_Pong[clientId] > std::chrono::seconds(2)&&
+            std::chrono::steady_clock::now() - lastPing > std::chrono::seconds(2) ) {
+                std::cout << "Envoi d'un ping" << std::endl;
+
+            uint8_t protocolType = static_cast<uint8_t>(ProtocolType::Ping);
+            std::vector<char> pingMessage = { static_cast<char>(protocolType) };
+
+            m_clients_Ping[clientId] = std::chrono::steady_clock::now();
+
+            SendTo(m_clientIdToAddress[clientId].first,
+                m_clientIdToAddress[clientId].second,
+                std::span(pingMessage.data(),
+                pingMessage.size()));
+        }
+        if (std::chrono::steady_clock::now() - m_clients_Pong[clientId] > std::chrono::seconds(10)) {
+            if (m_clientDisconnectedHandler) {
+                m_clientDisconnectedHandler(clientId);
+            }
+            to_erase.push_back(clientId);
+        }
+    }
+    for (auto& clientId : to_erase) {
+        m_clients_Ping.erase(clientId);
+        m_clients_Pong.erase(clientId);
+        m_clientIdToAddress.erase(clientId);
+        for (auto it = clients.begin(); it != clients.end(); ) {
+            if (it->second == clientId) {
+                it = clients.erase(it);
+            } else {
+                ++it;
+            }
+        }
+    }
     while (true) {
         auto message = GetNextMessage();
         if (!message.has_value()) break;
 
+
         std::array<char, 65535> buffer{};
         std::ranges::copy(message->first, buffer.begin());
+
+        std::cout << "Message received" << buffer.data() << std::endl;
 
         std::string ip = message->second;
 
@@ -64,6 +103,15 @@ void FalconServer::Update() {
                 HandleStream(ip, buffer);
             break;
 
+            case ProtocolType::Ping:
+                HandlePing(ip, buffer);
+            break;
+
+            case ProtocolType::Pong:
+                m_clients_Pong[clients[ip]] = std::chrono::steady_clock::now();
+            std::cout << "Pong received from " << ip << std::endl;
+            break;
+
             default:
                 std::cerr << "Paquet inconnu reçu" << std::endl;
             break;
@@ -72,12 +120,17 @@ void FalconServer::Update() {
 }
 
 
-void FalconServer::HandleConnect(const std::string& ip, const std::array<char, 65535>& buffer) {
+void FalconServer::HandleConnect(const std::string& ip, const std::array<char, 65535>& buffer){
     if (clients.find(ip) == clients.end()) {
+
+        std::string new_ip;
+        uint16_t new_port = 0;
+        std::tie(new_ip, new_port) = GetClientAddress(ip);
+
         UUID clientId = GenerateUUID(); 
         clients[ip] = clientId;
-        m_clients[clientId] = std::chrono::steady_clock::now();  
-        //m_clientIdToAddress[clientId] = std::make_pair(from_ip, port);
+        m_clients_Pong[clientId] = std::chrono::steady_clock::now();
+        m_clientIdToAddress[clientId] = std::make_pair(new_ip, new_port);
 
         // Notify that a new client has connected.
         if (m_clientConnectedHandler) {
@@ -87,10 +140,7 @@ void FalconServer::HandleConnect(const std::string& ip, const std::array<char, 6
         std::vector<char> message = { static_cast<char>(protocolType) };
         message.insert(message.end(), reinterpret_cast<const char*>(&clientId), reinterpret_cast<const char*>(&clientId) + sizeof(clientId));
 
-        std::string new_ip;
-        uint16_t new_port = 0;
-        std::tie(new_ip, new_port) = GetClientAddress(ip);
-
+        m_clients_Ping[clientId] = std::chrono::steady_clock::now();
         SendTo(new_ip, new_port, std::span(message.data(), message.size()));
     }
 }
@@ -124,9 +174,23 @@ void FalconServer::HandleStream( const std::string& from_ip, const std::array<ch
     std::span<const char> data(buffer.data() + sizeof(streamId), buffer.size() - sizeof(streamId));
 
     std::cout << "Stream ID " << streamId << " received from " << from_ip << std::endl;
-
-    
 }
+
+void FalconServer::HandlePing(const std::string &from_ip, const std::array<char, 65535>& buffer) {
+    uint64_t clientId = *reinterpret_cast<const uint32_t*>(&buffer[1]);
+    m_clients_Pong[clientId] = std::chrono::steady_clock::now();
+
+    std::cout << "Ping received from " << from_ip << std::endl;
+
+    ProtocolType protocolType = ProtocolType::Pong;
+    std::vector<char> message = { static_cast<char>(protocolType) };
+    std::string new_ip;
+    uint16_t new_port = 0;
+    std::tie(new_ip, new_port) = GetClientAddress(from_ip);
+    SendTo(new_ip, new_port, std::span(message.data(), message.size()));
+    std::cout << "Pong sent to " << from_ip << std::endl;
+}
+
 
 
 

@@ -23,7 +23,6 @@ std::unique_ptr<FalconClient> FalconClient::ConnectTo(const std::string& ip, uin
     uint16_t new_port = 0;
     std::tie(new_ip, new_port) = GetClientAddress(ip);
 
-
     auto m_falcon = std::make_unique<FalconClient>();
     m_falcon->Connect("127.0.0.1", port);
     if (!m_falcon) {
@@ -31,8 +30,12 @@ std::unique_ptr<FalconClient> FalconClient::ConnectTo(const std::string& ip, uin
         return nullptr;
     }
     m_falcon->StartListening();
+    m_falcon->m_ip = new_ip;
+    m_falcon->m_port =new_port;
 
-   
+    m_falcon->m_lastPing = std::chrono::steady_clock::now();
+    m_falcon->m_lastPong = std::chrono::steady_clock::now();
+
     uint8_t protocolType = static_cast<uint8_t>(ProtocolType::Connect);
     std::vector<char> connectMessage = { static_cast<char>(protocolType) };
 
@@ -43,10 +46,26 @@ std::unique_ptr<FalconClient> FalconClient::ConnectTo(const std::string& ip, uin
 
 void FalconClient::Update() {
     // ping the server if the time exceeds 0.1s without receiving any message
+    if (std::chrono::steady_clock::now() - m_lastPong > std::chrono::seconds(2) &&
+        std::chrono::steady_clock::now() - m_lastPing > std::chrono::seconds(2)) {
+        std::cout << "Envoi d'un ping" << std::endl;
+        uint8_t protocolType = static_cast<uint8_t>(ProtocolType::Ping);
+        std::vector<char> pingMessage = { static_cast<char>(protocolType) };
+        SendTo(m_ip, m_port, std::span(pingMessage.data(), pingMessage.size()));
+        m_lastPing = std::chrono::steady_clock::now();
+    }
+    if (std::chrono::steady_clock::now() - m_lastPong > std::chrono::seconds(10)) {
+        if (m_disconnectHandler) {
+            m_disconnectHandler();
+        }
+        raise(SIGABRT);
+    }
 
     while (true) {
         auto message = GetNextMessage();
         if (!message.has_value()) break;
+
+        m_lastPong = std::chrono::steady_clock::now();
 
         std::array<char, 65535> buffer{};
         std::ranges::copy(message->first, buffer.begin());
@@ -67,6 +86,16 @@ void FalconClient::Update() {
             case ProtocolType::Stream:
                 HandleStreamMessage(buffer);
             break;
+
+            case ProtocolType::Ping:
+                HandlePing(buffer);
+            break;
+
+            case ProtocolType::Pong:
+                m_lastPong = std::chrono::steady_clock::now();
+            std::cout << "Pong received from " << std::endl;
+            break;
+
 
             default:
                 std::cerr << "Paquet inconnu reçu" << std::endl;
@@ -117,6 +146,16 @@ void FalconClient::HandleStreamMessage(const std::array<char, 65535>& buffer) {
     std::cout << "Stream ID " << streamId << " reçu. Données: " << data.size() << " bytes." << std::endl;
 
     
+}
+
+void FalconClient::HandlePing(const std::array<char, 65535>& buffer) {
+
+    std::cout << "Ping received " << std::endl;
+
+
+    uint8_t protocolType = static_cast<uint8_t>(ProtocolType::Pong);
+    std::vector<char> pongMessage = { static_cast<char>(protocolType) };
+    SendTo(m_ip, m_port, std::span(pongMessage.data(), pongMessage.size()));
 }
 
 
