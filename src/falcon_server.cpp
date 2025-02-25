@@ -91,10 +91,10 @@ void FalconServer::Update() {
                 HandleConnect(ip, buffer);
             break;
 
-            /*case ProtocolType::Acknowledgement:
+            case ProtocolType::Acknowledgement:
 
                 HandleAcknowledgement(ip, buffer);
-            break;*/
+            break;
 
             case ProtocolType::Stream:
                 HandleStream(ip, buffer);
@@ -119,6 +119,12 @@ void FalconServer::Update() {
     }
 }
 
+
+void FalconServer::HandleAcknowledgement(const std::string& from_ip, const std::vector<char>& buffer) {
+    uint64_t clientId = *reinterpret_cast<const uint64_t*>(&buffer[1]);
+    // Handle the acknowledgement, e.g., remove the message from the resend queue
+    std::cout << "Acknowledgement received from " << from_ip << " for clientId: " << clientId << std::endl;
+}
 
 void FalconServer::HandleConnect(const std::string& ip, const std::vector<char>& buffer){
     std::string new_ip;

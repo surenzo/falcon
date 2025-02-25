@@ -82,10 +82,9 @@ void FalconClient::Update() {
                 HandleConnectMessage(buffer);
             break;
 
-            /*
             case ProtocolType::Acknowledgement:
-                HandleAcknowledgementMessage(buffer);
-            break;*/
+                HandleAcknowledgement(from_ip, buffer);
+            break;
 
             case ProtocolType::Stream:
                 HandleStreamMessage(buffer);
@@ -112,6 +111,11 @@ void FalconClient::Update() {
     }
 }
 
+void FalconClient::HandleAcknowledgement(const std::string& from_ip, const std::vector<char>& buffer) {
+    uint64_t clientId = *reinterpret_cast<const uint64_t*>(&buffer[1]);
+    // Handle the acknowledgement, e.g., remove the message from the resend queue
+    std::cout << "Acknowledgement received from " << from_ip << " for clientId: " << clientId << std::endl;
+}
 void FalconClient::HandleConnectMessage(const std::vector<char>& buffer) {
     m_clientId = *reinterpret_cast<const UUID*>(&buffer[1]);
 
@@ -168,8 +172,6 @@ void FalconClient::HandleStreamConnect(const std::vector<char>& buffer) {
 }
 
 void FalconClient::HandlePing(const std::vector<char>& buffer) {
-
-
 
     uint8_t protocolType = static_cast<uint8_t>(ProtocolType::Pong);
     std::vector<char> pongMessage = { static_cast<char>(protocolType) };

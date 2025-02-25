@@ -9,4 +9,5 @@ enum class ProtocolType : uint8_t {
     Ping,
     Pong,
     StreamConnect,
+    Acknowledgement,
 };
