@@ -7,6 +7,7 @@
 #include <thread>
 
 #include "../inc/Stream.h"
+#include "spdlog/details/os.h"
 
 
 Stream::Stream(Falcon &falcon, uint64_t clientId, uint32_t streamId, bool reliable, const std::string &ip, uint16_t port, bool isServer) :
@@ -18,6 +19,17 @@ Stream::~Stream() {
 
 }
 
+void Stream::Update() {
+    auto now = std::chrono::steady_clock::now();
+    for (auto it = m_packetMap.begin(); it != m_packetMap.end(); ) {
+        auto& [lastSentTime, packet] = it->second;
+        if (std::chrono::duration_cast<std::chrono::milliseconds>(now - lastSentTime).count() > 100) {
+            m_falcon.SendTo(m_ip, m_port, std::span(packet.data(), packet.size()));
+            lastSentTime = now;
+        }
+        ++it;
+    }
+}
 void Stream::SendData(std::span<const char> data) {
     std::vector<char> packet;
     if (data.size() > packet.max_size() - 15) {
@@ -37,9 +49,10 @@ void Stream::SendData(std::span<const char> data) {
     packet.insert(packet.end(), data.begin(), data.end());
 
     if (m_reliable) {
-        m_allPackets.push_back(packet);
-        m_ackReceived[m_nextPacketId] = false;
-        SendWithRetry(packet, m_nextPacketId);
+        //m_allPackets.push_back(packet);
+        m_packetMap[m_nextPacketId] = std::make_pair(std::chrono::steady_clock::now(), packet);
+        //m_ackReceived[m_nextPacketId] = false;
+        //SendWithRetry(packet, m_nextPacketId);
     }  else {
         m_falcon.SendTo(m_ip, m_port, packet);
     }
@@ -74,10 +87,16 @@ void Stream::OnDataReceived(std::span<const char> Data) {
 }
 
 void Stream::Acknowledge(uint8_t packetId) {
-    m_ackReceived[packetId] = true;
+    auto it = m_packetMap.find(packetId);
+    if (it != m_packetMap.end()) {
+        m_packetMap.erase(it);
+    }
+
+    std::cout << "Ack " << m_packetMap.size() << std::endl;
+    //m_ackReceived[packetId] = true;
 }
 
-void Stream::SendWithRetry(const std::vector<char>& data,uint8_t packetId) { // Make this a member function
+/*void Stream::SendWithRetry(const std::vector<char>& data,uint8_t packetId) { // Make this a member function
     m_falcon.SendTo(m_ip, m_port, std::span(data.data(), data.size()));
     // Schedule a retry if no acknowledgement is received
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -87,7 +106,7 @@ void Stream::SendWithRetry(const std::vector<char>& data,uint8_t packetId) { // 
         m_ackReceived.erase(packetId);
     }
 }
-
+*/
 void Stream::OnDataReceivedHandler(std::function<void(std::span<const char>)> handler) {
     m_dataReceivedHandler = std::move(handler);
 }

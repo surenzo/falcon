@@ -23,7 +23,7 @@ int main() {
     falcon_client->OnConnectionEvent([&](bool success, UUID client) {
     if (success) {
         std::cout << "Connected to server with client id: " << client << std::endl;
-        auto stream = falcon_client->CreateStream(false);
+        auto stream = falcon_client->CreateStream(true);
         stream->OnDataReceivedHandler([](std::span<const char> data) {
             std::string message(data.begin(), data.end());
             std::cout << "Received message (server stream): " << message << std::endl;

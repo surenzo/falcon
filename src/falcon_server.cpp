@@ -71,6 +71,15 @@ void FalconServer::Update() {
             }
         }
     }
+
+    for (auto& [clientId, streamMap] : m_streams) {
+        for (auto& [streamId, streamSubMap] : streamMap) {
+            for (auto& [isServer, stream] : streamSubMap) {
+                stream->Update();
+            }
+        }
+    }
+
     while (true) {
         auto message = GetNextMessage();
         if (!message.has_value()) break;
@@ -129,6 +138,7 @@ void FalconServer::HandleAcknowledgement(const std::string& from_ip, const std::
     // Access the appropriate Stream object and call its Acknowledge method
     if (m_streams[clientId][streamId][serverStream]) {
         m_streams[clientId][streamId][serverStream]->Acknowledge(packetId);
+
     } else {
         std::cerr << "Error: Stream not found for clientId: " << clientId << ", streamId: " << streamId << ", serverStream: " << serverStream << std::endl;
     }
