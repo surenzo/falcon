@@ -7,5 +7,6 @@ enum class ProtocolType : uint8_t {
     Connect,
     Stream,
     Ping,
-    Pong
+    Pong,
+    StreamConnect,
 };

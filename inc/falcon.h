@@ -34,9 +34,9 @@ public:
     void StartListening();
     static std::pair<std::string /*ip*/, uint16_t /*port*/> GetClientAddress(const std::string &Adress);
     void ListenForMessages();
-    std::optional<std::pair<std::span<char, 65535>, std::string>> GetNextMessage();
+    std::optional<std::tuple<std::span<char, 65535>, std::string, int>> GetNextMessage();
 
-    std::queue<std::pair<std::span<char, 65535>, std::string>> m_messageQueue;
+    std::queue<std::tuple<std::span<char, 65535>, std::string, int>> m_messageQueue;
 private:
     int SendToInternal(const std::string& to, uint16_t port, std::span<const char> message);
     int ReceiveFromInternal(std::string& from, std::span<char, 65535> message);

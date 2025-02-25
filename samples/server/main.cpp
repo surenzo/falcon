@@ -29,8 +29,15 @@ int main()
 
     auto falconServer = FalconServer::ListenTo(5555);
 
-    falconServer->OnClientConnected([](UUID client) {
+    falconServer->OnClientConnected([&](UUID client) {
         std::cout << "Client connected: " << client << std::endl;
+        auto stream = falconServer->CreateStream(client, false);
+        stream->OnDataReceivedHandler([](std::span<const char> data) {
+            std::cout << "Received data: " << std::endl;;
+            std::string message(data.begin(), data.end());
+            std::cout << "Message size (Received) : " << message.size() << std::endl;
+            std::cout << "Received message: " << message << std::endl;
+        });
     });
 
     falconServer->OnClientDisconnected([](UUID client) {
@@ -40,5 +47,6 @@ int main()
     while (true) {
         falconServer->Update();
     }
+
     return EXIT_SUCCESS;
 }

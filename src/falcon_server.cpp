@@ -3,9 +3,8 @@
 #include <random>
 #include <array>
 
-FalconServer::FalconServer() {
+FalconServer::FalconServer() : m_streams(){
     Falcon();
-    clients = std::unordered_map<std::string, UUID>();
 }
 
 FalconServer::~FalconServer() {
@@ -42,7 +41,6 @@ void FalconServer::Update() {
     for (auto& [clientId, lastPing] : m_clients_Ping) {
         if (std::chrono::steady_clock::now() - m_clients_Pong[clientId] > std::chrono::seconds(2)&&
             std::chrono::steady_clock::now() - lastPing > std::chrono::seconds(2) ) {
-                std::cout << "Envoi d'un ping" << std::endl;
 
             uint8_t protocolType = static_cast<uint8_t>(ProtocolType::Ping);
             std::vector<char> pingMessage = { static_cast<char>(protocolType) };
@@ -77,15 +75,12 @@ void FalconServer::Update() {
         auto message = GetNextMessage();
         if (!message.has_value()) break;
 
+        auto& [data, ip, recv_size] = message.value();
 
-        std::array<char, 65535> buffer{};
-        std::ranges::copy(message->first, buffer.begin());
+        std::vector<char> buffer(recv_size);
+        std::ranges::copy(data.subspan(0,recv_size), buffer.begin());
 
-        std::cout << "Message received" << buffer.data() << std::endl;
-
-        std::string ip = message->second;
-
-        uint8_t protocolType = buffer[0];
+        uint8_t protocolType = buffer.data()[0];
 
         switch (static_cast<ProtocolType>(protocolType)) {
             case ProtocolType::Connect:
@@ -99,9 +94,11 @@ void FalconServer::Update() {
             break;*/
 
             case ProtocolType::Stream:
-
                 HandleStream(ip, buffer);
             break;
+
+            case ProtocolType::StreamConnect:
+                HandleStreamConnect(buffer);
 
             case ProtocolType::Ping:
                 HandlePing(ip, buffer);
@@ -109,7 +106,6 @@ void FalconServer::Update() {
 
             case ProtocolType::Pong:
                 m_clients_Pong[clients[ip]] = std::chrono::steady_clock::now();
-            std::cout << "Pong received from " << ip << std::endl;
             break;
 
             default:
@@ -120,27 +116,32 @@ void FalconServer::Update() {
 }
 
 
-void FalconServer::HandleConnect(const std::string& ip, const std::array<char, 65535>& buffer){
+void FalconServer::HandleConnect(const std::string& ip, const std::vector<char>& buffer){
+    std::string new_ip;
+    uint16_t new_port = 0;
+    std::tie(new_ip, new_port) = GetClientAddress(ip);
+    uint8_t protocolType = static_cast<uint8_t>(ProtocolType::Connect);
+    std::vector<char> message = { static_cast<char>(protocolType) };
     if (clients.find(ip) == clients.end()) {
-
-        std::string new_ip;
-        uint16_t new_port = 0;
-        std::tie(new_ip, new_port) = GetClientAddress(ip);
 
         UUID clientId = GenerateUUID(); 
         clients[ip] = clientId;
         m_clients_Pong[clientId] = std::chrono::steady_clock::now();
         m_clientIdToAddress[clientId] = std::make_pair(new_ip, new_port);
 
+        message.insert(message.end(), reinterpret_cast<const char*>(&clientId), reinterpret_cast<const char*>(&clientId) + sizeof(clientId));
+
+        m_clients_Ping[clientId] = std::chrono::steady_clock::now();
+        SendTo(new_ip, new_port, std::span(message.data(), message.size()));
         // Notify that a new client has connected.
         if (m_clientConnectedHandler) {
             m_clientConnectedHandler(clientId);
         }
-        uint8_t protocolType = static_cast<uint8_t>(ProtocolType::Connect);
-        std::vector<char> message = { static_cast<char>(protocolType) };
+    }
+    else {
+        uint64_t clientId = clients[ip];
         message.insert(message.end(), reinterpret_cast<const char*>(&clientId), reinterpret_cast<const char*>(&clientId) + sizeof(clientId));
 
-        m_clients_Ping[clientId] = std::chrono::steady_clock::now();
         SendTo(new_ip, new_port, std::span(message.data(), message.size()));
     }
 }
@@ -168,19 +169,40 @@ void FalconServer::SendStreamData(const std::string& from_ip, uint32_t streamId,
     std::cout << "Acknowledgment packet received from " << from_ip << std::endl;
 }*/
 
-void FalconServer::HandleStream( const std::string& from_ip, const std::array<char, 65535>& buffer) {
-    
-    uint32_t streamId = *reinterpret_cast<const uint32_t*>(&buffer[1]);  // Extract stream ID
-    std::span<const char> data(buffer.data() + sizeof(streamId), buffer.size() - sizeof(streamId));
+void FalconServer::HandleStream( const std::string& from_ip, const std::vector<char>& buffer) {
 
-    std::cout << "Stream ID " << streamId << " received from " << from_ip << std::endl;
+    uint64_t clientId = *reinterpret_cast<const uint64_t*>(&buffer[1]);  // Extract client ID
+    uint32_t streamId = *reinterpret_cast<const uint32_t*>(&buffer[9]);  // Extract stream ID
+    bool serverStream = buffer[13] & CLIENT_STREAM_MASK;  // Extract server stream
+
+    //if (!m_streams[std::make_pair(clientId,serverStream)][streamId])
+        // creer ?
+
+    if (m_streams[clientId][streamId][serverStream]) {
+        m_streams[clientId][streamId][serverStream]->OnDataReceived(buffer);
+    } else {
+        std::cerr << "Error: Stream not initialized for clientId: " << clientId << ", streamId: " << streamId << ", serverStream: " << serverStream << std::endl;
+        // Handle the error appropriately, e.g., by initializing the stream or returning an error code
+    }
 }
 
-void FalconServer::HandlePing(const std::string &from_ip, const std::array<char, 65535>& buffer) {
+void FalconServer::HandleStreamConnect(const std::vector<char>& buffer) {
+    uint64_t clientId = *reinterpret_cast<const uint64_t*>(&buffer[1]);
+    uint8_t flags = *reinterpret_cast<const uint8_t*>(&buffer[9]);
+    uint32_t streamId = *reinterpret_cast<const uint32_t*>(&buffer[10]);
+
+    std::string new_ip = m_clientIdToAddress[clientId].first;
+    uint16_t new_port = m_clientIdToAddress[clientId].second;
+
+    auto stream = std::make_shared<Stream>(*this, clientId, streamId, flags & RELIABLE_MASK , new_ip, new_port,false);
+    m_streams[clientId][streamId][false] = stream;
+    m_newStreamHandler(stream);
+}
+
+void FalconServer::HandlePing(const std::string &from_ip, const std::vector<char>& buffer) {
     uint64_t clientId = *reinterpret_cast<const uint32_t*>(&buffer[1]);
     m_clients_Pong[clientId] = std::chrono::steady_clock::now();
 
-    std::cout << "Ping received from " << from_ip << std::endl;
 
     ProtocolType protocolType = ProtocolType::Pong;
     std::vector<char> message = { static_cast<char>(protocolType) };
@@ -188,18 +210,26 @@ void FalconServer::HandlePing(const std::string &from_ip, const std::array<char,
     uint16_t new_port = 0;
     std::tie(new_ip, new_port) = GetClientAddress(from_ip);
     SendTo(new_ip, new_port, std::span(message.data(), message.size()));
-    std::cout << "Pong sent to " << from_ip << std::endl;
 }
 
 
 
 
-std::unique_ptr<Stream> FalconServer::CreateStream(UUID clientId, bool reliable) {
-    Falcon* falcon = static_cast<Falcon*>(this);
+std::shared_ptr<Stream> FalconServer::CreateStream(UUID clientId, bool reliable) {
+    Falcon* falcon = this;
     uint32_t streamId = m_nextStreamId++;
-    // auto stream = std::make_unique<Stream>(*falcon, clientId, streamId, reliable, m_clientIdToAddress.at(clientId).first, m_clientIdToAddress.at(clientId).second);
-    // m_streams[clientId][streamId] = std::move(stream);
-    return std::move(m_streams[clientId][streamId]);
+    std::string ip = m_clientIdToAddress[clientId].first;
+    uint16_t port = m_clientIdToAddress[clientId].second;
+    auto stream = std::make_shared<Stream>(*falcon, clientId, streamId, reliable, ip, port);
+    m_streams[clientId][streamId][true] = stream;
+    // send a notification to the client to create the stream on its side
+    uint8_t protocolType = static_cast<uint8_t>(ProtocolType::StreamConnect);
+    uint8_t flags = reliable ? RELIABLE_MASK : 0;
+    std::vector<char> message = { static_cast<char>(protocolType) };
+    message.push_back(flags);
+    message.insert(message.end(), reinterpret_cast<const char*>(&streamId), reinterpret_cast<const char*>(&streamId) + sizeof(streamId));
+    SendTo(ip, port, std::span(message.data(), message.size()));
+    return stream;
 }
 
 void FalconServer::OnClientConnected(std::function<void(UUID)> handler) {
@@ -210,7 +240,10 @@ void FalconServer::OnClientDisconnected(std::function<void(UUID)> handler) {
     m_clientDisconnectedHandler = handler;
 }
 
+void FalconServer::OnCreateStream(std::function<void(std::shared_ptr<Stream>)> handler) {
+    m_newStreamHandler = std::move(handler);
+}
+
 void FalconServer::CloseStream(const Stream& stream) {
-    m_streams[stream.GetClientId()].erase(stream.GetStreamId());
     stream.~Stream();
 }

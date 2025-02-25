@@ -1,3 +1,5 @@
+#include <algorithm>
+#include <iostream>
 #include <optional>
 #include <thread>
 
@@ -26,11 +28,11 @@ void Falcon::ListenForMessages() {
         std::array<char, 65535> buffer;
         int recv_size = ReceiveFrom(from_ip, buffer);
         if (recv_size <= 0) return;
-        m_messageQueue.emplace(std::span<char, 65535>(buffer.data(), recv_size), from_ip);
+        m_messageQueue.emplace(std::span<char, 65535>(buffer.data(), recv_size), from_ip, recv_size);
     }
 }
 
-std::optional<std::pair<std::span<char, 65535>, std::string>> Falcon::GetNextMessage() {
+std::optional<std::tuple<std::span<char, 65535>, std::string, int>> Falcon::GetNextMessage() {
     if (m_messageQueue.empty()) {
         return std::nullopt;
     }

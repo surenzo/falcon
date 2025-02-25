@@ -27,6 +27,16 @@ int main() {
         std::cout << "Failed to connect to server" << std::endl;
     }
     });
+
+    // when a stream is created by the server, you send a message through the stream
+    falcon_client->OnCreateStream([](std::shared_ptr<Stream> stream) {
+        std::string message = "Hello World!";
+        //wait for 1s
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        stream->SendData(std::span(message.data(), message.size()));
+    });
+
+
     while (true) {
         falcon_client->Update();
     }
