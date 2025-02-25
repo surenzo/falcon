@@ -47,7 +47,9 @@ void Stream::OnDataReceived(std::span<const char> Data) {
     std::vector<char> trueData = {Data.begin()+15, Data.end()} ;
     // si c'est le dernier paquet, appeler OnDataReceived
 
+    std::cout << "Data received: " << std::string(trueData.begin(), trueData.end()) << std::endl;
     if (m_dataReceivedHandler) {
+        std::cout << "Data received handler set" << std::endl;
         m_dataReceivedHandler(trueData);
     } else {
         std::cerr << "Error: Data received handler not set" << std::endl;
@@ -55,5 +57,5 @@ void Stream::OnDataReceived(std::span<const char> Data) {
 }
 
 void Stream::OnDataReceivedHandler(std::function<void(std::span<const char>)> handler) {
-    m_dataReceivedHandler = handler;
+    m_dataReceivedHandler = std::move(handler);
 }

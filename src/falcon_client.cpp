@@ -194,9 +194,9 @@ std::shared_ptr<Stream> FalconClient::CreateStream(bool reliable) {
     uint8_t protocolType = static_cast<uint8_t>(ProtocolType::StreamConnect);
     uint8_t flags = reliable ? RELIABLE_MASK : 0;
     std::vector<char> message = { static_cast<char>(protocolType) };
-    message.push_back(m_clientId);
-    message.push_back(flags);
-    message.push_back(streamId);
+    message.insert(message.end(), reinterpret_cast<const char*>(&m_clientId), reinterpret_cast<const char*>(&m_clientId) + sizeof(m_clientId));
+    message.insert(message.end(), flags);
+    message.insert(message.end(), reinterpret_cast<const char*>(&streamId), reinterpret_cast<const char*>(&streamId) + sizeof(streamId));
     SendTo(m_ip, m_port, std::span(message.data(), message.size()));
     return stream;
 }

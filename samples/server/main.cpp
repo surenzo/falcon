@@ -33,15 +33,27 @@ int main()
         std::cout << "Client connected: " << client << std::endl;
         auto stream = falconServer->CreateStream(client, false);
         stream->OnDataReceivedHandler([](std::span<const char> data) {
-            std::cout << "Received data: " << std::endl;;
             std::string message(data.begin(), data.end());
-            std::cout << "Message size (Received) : " << message.size() << std::endl;
-            std::cout << "Received message: " << message << std::endl;
+            std::cout << "Received message(server stream): " << message << std::endl;
         });
+        std::cout << "Send Quoi ? to client through server stream" << std::endl;
+        std::string message = "Quoi ?";
+        stream->SendData(std::span(message.data(), message.size()));;
     });
 
     falconServer->OnClientDisconnected([](UUID client) {
         std::cout << "Client disconnected: " << client << std::endl;
+    });
+
+    // when a stream is created by the server, you send a message through the stream
+    falconServer->OnCreateStream([](std::shared_ptr<Stream> stream) {
+        stream->OnDataReceivedHandler([](std::span<const char> data) {
+            std::string message(data.begin(), data.end());
+            std::cout << "Received message(client stream): " << message << std::endl;
+        });
+        std::cout << "Send General Kenobi! to client through client stream" << std::endl;
+        std::string message = "General Kenobi!";
+        stream->SendData(std::span(message.data(), message.size()));
     });
 
     while (true) {

@@ -178,6 +178,8 @@ void FalconServer::HandleStream( const std::string& from_ip, const std::vector<c
     //if (!m_streams[std::make_pair(clientId,serverStream)][streamId])
         // creer ?
 
+    std::cout << "Stream received from " << from_ip << " with clientId: " << clientId << ", streamId: " << streamId << ", serverStream: " << serverStream << std::endl;
+
     if (m_streams[clientId][streamId][serverStream]) {
         m_streams[clientId][streamId][serverStream]->OnDataReceived(buffer);
     } else {
@@ -195,6 +197,7 @@ void FalconServer::HandleStreamConnect(const std::vector<char>& buffer) {
     uint16_t new_port = m_clientIdToAddress[clientId].second;
 
     auto stream = std::make_shared<Stream>(*this, clientId, streamId, flags & RELIABLE_MASK , new_ip, new_port,false);
+    std::cout << "Stream created for client " << clientId << " with streamId " << streamId << std::endl;
     m_streams[clientId][streamId][false] = stream;
     m_newStreamHandler(stream);
 }
