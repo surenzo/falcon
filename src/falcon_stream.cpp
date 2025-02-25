@@ -8,7 +8,9 @@
 #include "../inc/Stream.h"
 
 Stream::Stream(Falcon &falcon, uint64_t clientId, uint32_t streamId, bool reliable, const std::string &ip, uint16_t port, bool isServer) :
-m_falcon(falcon), m_clientId(clientId), m_streamId(streamId), m_reliable(reliable), m_ip(ip), m_port(port), m_isServer(isServer), m_dataReceivedHandler() {}
+m_falcon(falcon), m_clientId(clientId), m_streamId(streamId), m_reliable(reliable), m_ip(ip), m_port(port), m_isServer(isServer), m_dataReceivedHandler() {
+
+}
 
 Stream::~Stream() {
 
@@ -16,6 +18,9 @@ Stream::~Stream() {
 
 void Stream::SendData(std::span<const char> data) {
     std::vector<char> packet;
+    if (data.size() > packet.max_size() - 15) {
+        throw std::length_error("Data size exceeds maximum allowable size for std::vector");
+    }
     uint8_t protocolType = static_cast<uint8_t>(ProtocolType::Stream);
     packet.insert(packet.end(), protocolType);
     packet.insert(packet.end(), reinterpret_cast<const char*>(&m_clientId), reinterpret_cast<const char*>(&m_clientId) + sizeof(m_clientId));
@@ -47,9 +52,7 @@ void Stream::OnDataReceived(std::span<const char> Data) {
     std::vector<char> trueData = {Data.begin()+15, Data.end()} ;
     // si c'est le dernier paquet, appeler OnDataReceived
 
-    std::cout << "Data received: " << std::string(trueData.begin(), trueData.end()) << std::endl;
     if (m_dataReceivedHandler) {
-        std::cout << "Data received handler set" << std::endl;
         m_dataReceivedHandler(trueData);
     } else {
         std::cerr << "Error: Data received handler not set" << std::endl;

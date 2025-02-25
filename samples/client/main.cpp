@@ -23,14 +23,14 @@ int main() {
     falcon_client->OnConnectionEvent([&](bool success, UUID client) {
     if (success) {
         std::cout << "Connected to server with client id: " << client << std::endl;
-        /*auto stream = falcon_client->CreateStream(false);
+        auto stream = falcon_client->CreateStream(false);
         stream->OnDataReceivedHandler([](std::span<const char> data) {
             std::string message(data.begin(), data.end());
             std::cout << "Received message (server stream): " << message << std::endl;
         });
         std::cout << "Send Hello There! to server through client stream" << std::endl;
         std::string message = "Hello There!";
-        stream->SendData(std::span(message.data(), message.size()));;*/
+        stream->SendData(std::span(message.data(), message.size()));;
     } else {
         std::cout << "Failed to connect to server" << std::endl;
     }
@@ -39,7 +39,6 @@ int main() {
     // when a stream is created by the server, you send a message through the stream
     falcon_client->OnCreateStream([](std::shared_ptr<Stream> stream) {
         stream->OnDataReceivedHandler([](std::span<const char> data) {
-            std::cout << "Data received handler set" << std::endl;
             std::string message(data.begin(), data.end());
             std::cout << "Received message(client stream): " << message << std::endl;
         });

@@ -28,11 +28,16 @@ void Falcon::ListenForMessages() {
         std::array<char, 65535> buffer;
         int recv_size = ReceiveFrom(from_ip, buffer);
         if (recv_size <= 0) return;
-        m_messageQueue.emplace(std::span<char, 65535>(buffer.data(), recv_size), from_ip, recv_size);
+
+        {
+            std::lock_guard<std::mutex> lock(m_queueMutex);
+            std::vector<char> message_data(buffer.data(), buffer.data() + recv_size);
+            m_messageQueue.emplace(message_data, from_ip, recv_size);
+        }
     }
 }
-
-std::optional<std::tuple<std::span<char, 65535>, std::string, int>> Falcon::GetNextMessage() {
+std::optional<Message> Falcon::GetNextMessage() {
+    std::lock_guard<std::mutex> lock(m_queueMutex);
     if (m_messageQueue.empty()) {
         return std::nullopt;
     }
@@ -40,7 +45,6 @@ std::optional<std::tuple<std::span<char, 65535>, std::string, int>> Falcon::GetN
     m_messageQueue.pop();
     return message;
 }
-
 std::pair<std::string, uint16_t> Falcon::GetClientAddress(const std::string &Address) {
     std::string new_ip ;
     uint16_t new_port = 0;

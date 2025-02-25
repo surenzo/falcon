@@ -75,10 +75,13 @@ void FalconServer::Update() {
         auto message = GetNextMessage();
         if (!message.has_value()) break;
 
-        auto& [data, ip, recv_size] = message.value();
+        auto buffer = message->data;
+        auto ip = message->from_ip;
+        auto recv_size = message->recv_size;
 
-        std::vector<char> buffer(recv_size);
-        std::ranges::copy(data.subspan(0,recv_size), buffer.begin());
+        /*std::vector<char> buffer(recv_size);
+        std::ranges::copy(data.subspan(0,recv_size), buffer.begin());*/
+
 
         uint8_t protocolType = buffer.data()[0];
 
@@ -99,6 +102,7 @@ void FalconServer::Update() {
 
             case ProtocolType::StreamConnect:
                 HandleStreamConnect(buffer);
+            break;
 
             case ProtocolType::Ping:
                 HandlePing(ip, buffer);
@@ -139,7 +143,7 @@ void FalconServer::HandleConnect(const std::string& ip, const std::vector<char>&
         }
     }
     else {
-        uint64_t clientId = clients[ip];
+        UUID clientId = clients[ip];
         message.insert(message.end(), reinterpret_cast<const char*>(&clientId), reinterpret_cast<const char*>(&clientId) + sizeof(clientId));
 
         SendTo(new_ip, new_port, std::span(message.data(), message.size()));
@@ -155,15 +159,6 @@ void FalconServer::HandleConnect(const std::string& ip, const std::vector<char>&
 }*/
 
 
-void FalconServer::SendStreamData(const std::string& from_ip, uint32_t streamId, const std::vector<char>& data) {
-    uint8_t protocolType = static_cast<uint8_t>(ProtocolType::Stream);
-    std::vector<char> message = { static_cast<char>(protocolType) };
-    message.insert(message.end(), reinterpret_cast<const char*>(&streamId), reinterpret_cast<const char*>(&streamId) + sizeof(streamId));
-
-    message.insert(message.end(), data.begin(), data.end());
-    SendTo(from_ip, 5555, std::span(message.data(), message.size()));
-}
-
 /*void FalconServer::HandleAcknowledgement(const std::string& from_ip, const std::array<char, 65535>& buffer) {
     
     std::cout << "Acknowledgment packet received from " << from_ip << std::endl;
@@ -178,7 +173,6 @@ void FalconServer::HandleStream( const std::string& from_ip, const std::vector<c
     //if (!m_streams[std::make_pair(clientId,serverStream)][streamId])
         // creer ?
 
-    std::cout << "Stream received from " << from_ip << " with clientId: " << clientId << ", streamId: " << streamId << ", serverStream: " << serverStream << std::endl;
 
     if (m_streams[clientId][streamId][serverStream]) {
         m_streams[clientId][streamId][serverStream]->OnDataReceived(buffer);
@@ -189,6 +183,7 @@ void FalconServer::HandleStream( const std::string& from_ip, const std::vector<c
 }
 
 void FalconServer::HandleStreamConnect(const std::vector<char>& buffer) {
+
     uint64_t clientId = *reinterpret_cast<const uint64_t*>(&buffer[1]);
     uint8_t flags = *reinterpret_cast<const uint8_t*>(&buffer[9]);
     uint32_t streamId = *reinterpret_cast<const uint32_t*>(&buffer[10]);
@@ -196,8 +191,7 @@ void FalconServer::HandleStreamConnect(const std::vector<char>& buffer) {
     std::string new_ip = m_clientIdToAddress[clientId].first;
     uint16_t new_port = m_clientIdToAddress[clientId].second;
 
-    auto stream = std::make_shared<Stream>(*this, clientId, streamId, flags & RELIABLE_MASK , new_ip, new_port,false);
-    std::cout << "Stream created for client " << clientId << " with streamId " << streamId << std::endl;
+    auto stream = std::make_shared<Stream>(*this, clientId, streamId, flags & RELIABLE_MASK , new_ip, new_port);
     m_streams[clientId][streamId][false] = stream;
     m_newStreamHandler(stream);
 }
@@ -223,7 +217,7 @@ std::shared_ptr<Stream> FalconServer::CreateStream(UUID clientId, bool reliable)
     uint32_t streamId = m_nextStreamId++;
     std::string ip = m_clientIdToAddress[clientId].first;
     uint16_t port = m_clientIdToAddress[clientId].second;
-    auto stream = std::make_shared<Stream>(*falcon, clientId, streamId, reliable, ip, port);
+    auto stream = std::make_shared<Stream>(*falcon, clientId, streamId, reliable, ip, port, true);
     m_streams[clientId][streamId][true] = stream;
     // send a notification to the client to create the stream on its side
     uint8_t protocolType = static_cast<uint8_t>(ProtocolType::StreamConnect);

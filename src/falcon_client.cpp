@@ -63,10 +63,13 @@ void FalconClient::Update() {
         auto message = GetNextMessage();
         if (!message.has_value()) break;
 
-        auto& [data, _, recv_size] = message.value();
+        auto buffer = message->data;
+        auto from_ip = message->from_ip;
+        auto recv_size = message->recv_size;
 
-        std::vector<char> buffer(recv_size);
-        std::ranges::copy(data.subspan(0,recv_size), buffer.begin());
+        /*std::vector<char> buffer(recv_size);
+        std::ranges::copy(data.subspan(0,recv_size), buffer.begin());*/
+
 
         uint8_t protocolType = buffer.data()[0];
 
@@ -156,9 +159,12 @@ void FalconClient::HandleStreamConnect(const std::vector<char>& buffer) {
     uint8_t flags = *reinterpret_cast<const uint8_t*>(&buffer[1]);
     uint32_t streamId = *reinterpret_cast<const uint32_t*>(&buffer[2]);
 
-auto stream = std::make_shared<Stream>(*this, m_clientId, streamId, flags & RELIABLE_MASK , m_ip, m_port,true);
+
+    auto stream = std::make_shared<Stream>(*this, m_clientId, streamId, flags & RELIABLE_MASK , m_ip, m_port,true);
+
     m_streams[streamId][true]= stream;
     m_newStreamHandler(stream);
+
 }
 
 void FalconClient::HandlePing(const std::vector<char>& buffer) {
