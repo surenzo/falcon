@@ -122,7 +122,17 @@ void FalconServer::Update() {
 
 void FalconServer::HandleAcknowledgement(const std::string& from_ip, const std::vector<char>& buffer) {
     uint64_t clientId = *reinterpret_cast<const uint64_t*>(&buffer[1]);
-    // Handle the acknowledgement, e.g., remove the message from the resend queue
+    uint8_t packetId = *reinterpret_cast<const uint8_t*>(&buffer[11]);
+    uint32_t streamId = *reinterpret_cast<const uint32_t*>(&buffer[9]);
+    bool serverStream = buffer[13] & CLIENT_STREAM_MASK;
+
+    // Access the appropriate Stream object and call its Acknowledge method
+    if (m_streams[clientId][streamId][serverStream]) {
+        m_streams[clientId][streamId][serverStream]->Acknowledge(packetId);
+    } else {
+        std::cerr << "Error: Stream not found for clientId: " << clientId << ", streamId: " << streamId << ", serverStream: " << serverStream << std::endl;
+    }
+
     std::cout << "Acknowledgement received from " << from_ip << " for clientId: " << clientId << std::endl;
 }
 

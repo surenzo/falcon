@@ -25,6 +25,7 @@ public:
     void OnDataReceived(std::span<const char> Data);
 	void OnDataReceivedHandler(std::function<void(std::span<const char>)> handler);
 	void SendWithRetry(const std::vector<char>& data, uint8_t packetId);
+	void Acknowledge(uint8_t packetId);
 
 	uint64_t GetClientId() const { return m_clientId; }
 	uint32_t GetStreamId() const { return m_streamId; }

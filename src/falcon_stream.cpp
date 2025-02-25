@@ -50,10 +50,12 @@ void Stream::OnDataReceived(std::span<const char> Data) {
     if (m_reliable) {
         std::vector<char> packet;
         uint8_t protocolType = static_cast<uint8_t>(ProtocolType::Acknowledgement);
-        packet.insert(packet.end(), protocolType);
-        m_falcon.SendTo(m_ip, m_port, packet);
         uint8_t packetId = Data[11];
-        m_ackReceived[packetId] = true;
+        packet.insert(packet.end(), protocolType);
+        packet.insert(packet.end(), reinterpret_cast<const char*>(&m_clientId), reinterpret_cast<const char*>(&m_clientId) + sizeof(m_clientId));
+        packet.insert(packet.end(), reinterpret_cast<const char*>(&m_streamId), reinterpret_cast<const char*>(&m_streamId) + sizeof(m_streamId));
+        packet.insert(packet.end(), packetId);
+        m_falcon.SendTo(m_ip, m_port, packet);
     }
     std::vector<char> packet = {Data.begin(), Data.end()};
     uint8_t flags = packet[10];
@@ -71,12 +73,18 @@ void Stream::OnDataReceived(std::span<const char> Data) {
     }
 }
 
+void Stream::Acknowledge(uint8_t packetId) {
+    m_ackReceived[packetId] = true;
+}
+
 void Stream::SendWithRetry(const std::vector<char>& data,uint8_t packetId) { // Make this a member function
     m_falcon.SendTo(m_ip, m_port, std::span(data.data(), data.size()));
     // Schedule a retry if no acknowledgement is received
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     if (!m_ackReceived[packetId]) {
         SendWithRetry(data, packetId);
+    } else {
+        m_ackReceived.erase(packetId);
     }
 }
 
