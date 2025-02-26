@@ -35,11 +35,17 @@ class FalconServer : public Falcon {
 
 
     private:
-        void HandleConnect( const std::string& ip,const std::vector<char>& buffer);
-        void HandleStream(const std::string& from_ip,const std::vector<char>& buffer);
+        void ProcessMessages();
+        void UpdateStreams();
+        void RemoveDisconnectedClients(const std::vector<UUID>& to_erase);
+        void HandleClientDisconnection(UUID clientId, std::vector<UUID>& to_erase) const;
+        void SendPing(UUID clientId);
+
+        void HandleConnect( const std::string& ip);
+        void HandlePing(const std::vector<char>& buffer);
+        void HandleStream(const std::vector<char>& buffer);
         void HandleStreamConnect(const std::vector<char>& buffer);
-        void HandlePing(const std::string& from_ip, const std::vector<char>& buffer);
-        void HandleAcknowledgement(const std::string& from_ip, const std::vector<char>& buffer);
+        void HandleAcknowledgement(const std::vector<char>& buffer);
 
         std::unordered_map<std::string, UUID> clients;
         std::unordered_map<UUID, std::chrono::steady_clock::time_point> m_clients_Ping;
@@ -76,11 +82,15 @@ class FalconClient : public Falcon {
         void OnDisconnect(std::function<void()> handler);
         void OnCreateStream(std::function<void(std::shared_ptr<Stream>)> handler);
     private:
+        void SendPing();
+        void HandleDisconnection();
+        void UpdateStreams();
+        void ProcessMessages();
         void HandleConnectMessage(const std::vector<char>& buffer);
         void HandleStreamMessage(const std::vector<char>& buffer);
         void HandleStreamConnect(const std::vector<char>& buffer);
         void HandlePing(const std::vector<char>& buffer);
-        void HandleAcknowledgement(const std::string& from_ip, const std::vector<char>& buffer);
+        void HandleAcknowledgement(const std::vector<char>& buffer);
 
         std::function<void(bool, UUID)> m_connectionHandler;
         std::function<void()> m_disconnectHandler;

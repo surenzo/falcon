@@ -27,7 +27,6 @@ void Falcon::ListenForMessages() {
         std::array<char, 65535> buffer;
         int recv_size = ReceiveFrom(from_ip, buffer);
         if (recv_size <= 0) return;
-
         {
             std::lock_guard<std::mutex> lock(m_queueMutex);
             std::vector<char> message_data(buffer.data(), buffer.data() + recv_size);
