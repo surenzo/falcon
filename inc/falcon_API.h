@@ -28,9 +28,6 @@ class FalconServer : public Falcon {
 
         void Update();
         void HandleConnect( const std::string& ip,const std::vector<char>& buffer);
-        //void SendAcknowledgement( const std::string& from_ip, uint64_t clientId);
-        //void SendStreamData( const std::string& from_ip, uint32_t streamId, const std::vector<char>& data);
-        //void HandleAcknowledgement(const std::string& from_ip,const std::vector<char>& buffer);
         void HandleStream(const std::string& from_ip,const std::vector<char>& buffer);
         void HandleStreamConnect(const std::vector<char>& buffer);
         void HandlePing(const std::string& from_ip, const std::vector<char>& buffer);
@@ -70,17 +67,16 @@ class FalconClient : public Falcon {
 
         void Update();
         void HandleConnectMessage(const std::vector<char>& buffer);
-        //void HandleAcknowledgementMessage(const std::vector<char>& buffer);
         void HandleStreamMessage(const std::vector<char>& buffer);
         void HandleStreamConnect(const std::vector<char>& buffer);
         void HandlePing(const std::vector<char>& buffer);
+        void HandleAcknowledgement(const std::string& from_ip, const std::vector<char>& buffer);
 
         void OnConnectionEvent(std::function<void(bool, UUID)> handler);
         void OnDisconnect(std::function<void()> handler);
+
         void OnCreateStream(std::function<void(std::shared_ptr<Stream>)> handler);
         std::shared_ptr<Stream> CreateStream(bool reliable);
-
-        void HandleAcknowledgement(const std::string& from_ip, const std::vector<char>& buffer);
     
     private:
         std::function<void(bool, UUID)> m_connectionHandler;

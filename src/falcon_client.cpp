@@ -8,12 +8,12 @@
 
 
 FalconClient::FalconClient(): m_streams() {
-    // call the constructor of the base class
+
     Falcon();
 }
 
 FalconClient::~FalconClient() {
-    // call the destructor of the base class
+
     Falcon::~Falcon();
 }
 
@@ -44,7 +44,7 @@ std::unique_ptr<FalconClient> FalconClient::ConnectTo(const std::string& ip, uin
 
 
 void FalconClient::Update() {
-    // ping the server if the time exceeds 0.1s without receiving any message
+
     if (std::chrono::steady_clock::now() - m_lastPong > std::chrono::seconds(2) &&
         std::chrono::steady_clock::now() - m_lastPing > std::chrono::seconds(2)) {
         uint8_t protocolType = static_cast<uint8_t>(ProtocolType::Ping);
@@ -73,23 +73,12 @@ void FalconClient::Update() {
         auto from_ip = message->from_ip;
         auto recv_size = message->recv_size;
 
-        /*std::vector<char> buffer(recv_size);
-        std::ranges::copy(data.subspan(0,recv_size), buffer.begin());*/
-
 
         uint8_t protocolType = buffer.data()[0];
-
-        /*if (!(static_cast<ProtocolType>(protocolType) == ProtocolType::Pong || static_cast<ProtocolType>(protocolType) == ProtocolType::Ping)) {
-        std::cout << "Paquet reçu" << static_cast<int>(protocolType) << std::endl;
-        }*/
 
         switch (static_cast<ProtocolType>(protocolType)) {
             case ProtocolType::Connect:
                 HandleConnectMessage(buffer);
-            break;
-
-            case ProtocolType::Acknowledgement:
-                HandleAcknowledgement(from_ip, buffer);
             break;
 
             case ProtocolType::Stream:
@@ -100,15 +89,17 @@ void FalconClient::Update() {
                 HandlePing(buffer);
             break;
 
-            case ProtocolType::StreamConnect:
-                HandleStreamConnect(buffer);
-                break;
-
             case ProtocolType::Pong:
                 m_lastPong = std::chrono::steady_clock::now();
             break;
 
+            case ProtocolType::StreamConnect:
+                HandleStreamConnect(buffer);
+                break;
 
+            case ProtocolType::Acknowledgement:
+                HandleAcknowledgement(from_ip, buffer);
+            break;
             default:
                 std::cerr << "Paquet inconnu reçu" << std::endl;
             break;
@@ -134,41 +125,19 @@ void FalconClient::HandleAcknowledgement(const std::string& from_ip, const std::
 void FalconClient::HandleConnectMessage(const std::vector<char>& buffer) {
     m_clientId = *reinterpret_cast<const UUID*>(&buffer[1]);
 
-
     if (m_connectionHandler) {
         m_connectionHandler(true, m_clientId);
     }
 }
 
 
-/*
-void FalconClient::HandleAcknowledgementMessage(const std::array<char, 65535>& buffer) {
-   
-    uint8_t protocolType = *reinterpret_cast<const UUID*>(&buffer[1]);
-
-    switch (protocolType) {
-        case ProtocolType::Connect:
-            uint64_t clientId = *reinterpret_cast<const UUID*>(&buffer[2]);
-            break;
-        default:
-            std::cerr << "Paquet inconnu reçu Acknowledgement" << std::endl;
-    }
-
-    
-    std::cout << "Confirmation (Acknowledgement) reçue" << std::endl;
-
-    
-}*/
 
 
 void FalconClient::HandleStreamMessage(const std::vector<char>& buffer) {
 
-    uint64_t clientId = *reinterpret_cast<const uint64_t*>(&buffer[1]);  // Extract client ID
-    uint32_t streamId = *reinterpret_cast<const uint32_t*>(&buffer[9]);  // Extract stream ID
-    bool serverStream = buffer[13] & CLIENT_STREAM_MASK;  // Extract server stream
-
-    //if (!m_streams[std::make_pair(clientId,serverStream)][streamId])
-    // creer ?
+    uint64_t clientId = *reinterpret_cast<const uint64_t*>(&buffer[1]);
+    uint32_t streamId = *reinterpret_cast<const uint32_t*>(&buffer[9]);
+    bool serverStream = buffer[13] & CLIENT_STREAM_MASK;
 
     m_streams[streamId][serverStream]->OnDataReceived(buffer);
     
@@ -213,7 +182,6 @@ std::shared_ptr<Stream> FalconClient::CreateStream(bool reliable) {
     uint32_t streamId = m_nextStreamId++;
     auto stream = std::make_shared<Stream>(*falcon, m_clientId, streamId, reliable, m_ip, m_port);
     m_streams[streamId][false] = stream;
-    //envoie la notification de creation au serveur
     uint8_t protocolType = static_cast<uint8_t>(ProtocolType::StreamConnect);
     uint8_t flags = reliable ? RELIABLE_MASK : 0;
     std::vector<char> message = { static_cast<char>(protocolType) };

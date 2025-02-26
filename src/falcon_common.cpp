@@ -24,7 +24,6 @@ void Falcon::ListenForMessages() {
     while (true) {
         std::string from_ip;
         from_ip.resize(255);
-        // Receive message and put it in the queue
         std::array<char, 65535> buffer;
         int recv_size = ReceiveFrom(from_ip, buffer);
         if (recv_size <= 0) return;
