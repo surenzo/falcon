@@ -25,7 +25,7 @@ public:
     void OnDataReceived(std::span<const char> Data);
 	void OnDataReceivedHandler(std::function<void(std::span<const char>)> handler);
 	//void SendWithRetry(const std::vector<char>& data, uint8_t packetId);
-	void Acknowledge(uint8_t packetId);
+	void Acknowledge(uint32_t packetId);
 	void Update();
 
 	uint64_t GetClientId() const { return m_clientId; }
@@ -41,7 +41,7 @@ private:
 	bool m_reliable;
 	bool m_isServer;
 
-	std::map<uint8_t, std::pair<std::chrono::time_point<std::chrono::steady_clock>, std::vector<char>>> m_packetMap;
+	std::map<uint32_t, std::pair<std::chrono::time_point<std::chrono::steady_clock>, std::vector<char>>> m_packetMap;
 
 	//handler pour la data recu
 	std::function<void(std::span<const char>)> m_dataReceivedHandler;

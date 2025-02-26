@@ -20,6 +20,9 @@ Stream::~Stream() {
 }
 
 void Stream::Update() {
+    if (m_packetMap.size()>0) {
+
+    }
     auto now = std::chrono::steady_clock::now();
     for (auto it = m_packetMap.begin(); it != m_packetMap.end(); ) {
         auto& [lastSentTime, packet] = it->second;
@@ -45,38 +48,42 @@ void Stream::SendData(std::span<const char> data) {
     if (m_isServer)
         flags |= CLIENT_STREAM_MASK;
     packet.insert(packet.end(), flags);
-    packet.insert(packet.end(), m_nextPacketId);
+    packet.insert(packet.end(), reinterpret_cast<const char*>(&m_nextPacketId), reinterpret_cast<const char*>(&m_nextPacketId) + sizeof(m_nextPacketId));
     packet.insert(packet.end(), data.begin(), data.end());
 
     if (m_reliable) {
         //m_allPackets.push_back(packet);
+
         m_packetMap[m_nextPacketId] = std::make_pair(std::chrono::steady_clock::now(), packet);
         //m_ackReceived[m_nextPacketId] = false;
         //SendWithRetry(packet, m_nextPacketId);
     }  else {
         m_falcon.SendTo(m_ip, m_port, packet);
     }
+
     m_nextPacketId++;
 }
 
 void Stream::OnDataReceived(std::span<const char> Data) {
-    if (m_reliable) {
-        std::vector<char> packet;
-        uint8_t protocolType = static_cast<uint8_t>(ProtocolType::Acknowledgement);
-        uint8_t packetId = Data[11];
-        packet.insert(packet.end(), protocolType);
-        packet.insert(packet.end(), reinterpret_cast<const char*>(&m_clientId), reinterpret_cast<const char*>(&m_clientId) + sizeof(m_clientId));
-        packet.insert(packet.end(), reinterpret_cast<const char*>(&m_streamId), reinterpret_cast<const char*>(&m_streamId) + sizeof(m_streamId));
-        packet.insert(packet.end(), packetId);
-        m_falcon.SendTo(m_ip, m_port, packet);
-    }
     std::vector<char> packet = {Data.begin(), Data.end()};
-    uint8_t flags = packet[10];
-    if (flags & RELIABLE_MASK) {
-        // Send an ack with the packet number
+    if (m_reliable) {
+        std::vector<char> packet2;
+        uint8_t protocolType = static_cast<uint8_t>(ProtocolType::Acknowledgement);
+        uint32_t packetId = packet[14];
+        packet2.insert(packet2.end(), protocolType);
+        packet2.insert(packet2.end(), reinterpret_cast<const char*>(&m_clientId), reinterpret_cast<const char*>(&m_clientId) + sizeof(m_clientId));
+        packet2.insert(packet2.end(), reinterpret_cast<const char*>(&m_streamId), reinterpret_cast<const char*>(&m_streamId) + sizeof(m_streamId));
+        packet2.insert(packet2.end(), m_isServer);
+        packet2.insert(packet2.end(), reinterpret_cast<const char*>(&packetId), reinterpret_cast<const char*>(&packetId) + sizeof(packetId));
+
+        std::cout << protocolType << " " << m_clientId << " " << m_streamId << " " << m_isServer << " " << packetId << std::endl;
+        std::cout << "packet " << packetId << std::endl;
+        m_falcon.SendTo(m_ip, m_port, packet2);
     }
+
+
     // Once you have everything, verify and write the data to m_data
-    std::vector<char> trueData = {Data.begin() + 15, Data.end()};
+    std::vector<char> trueData = {Data.begin() + 18, Data.end()};
     // If it's the last packet, call OnDataReceived
 
     if (m_dataReceivedHandler) {
@@ -86,10 +93,13 @@ void Stream::OnDataReceived(std::span<const char> Data) {
     }
 }
 
-void Stream::Acknowledge(uint8_t packetId) {
+void Stream::Acknowledge(uint32_t packetId) {
     auto it = m_packetMap.find(packetId);
+    std::cout <<"packetid"<<packetId << std::endl;
+    std::cout << "toujours pas vrtaiment ack " << m_packetMap.size() << std::endl;
     if (it != m_packetMap.end()) {
         m_packetMap.erase(it);
+        std::cout << "toujours pas ack " << m_packetMap.size() << std::endl;
     }
 
     std::cout << "Ack " << m_packetMap.size() << std::endl;

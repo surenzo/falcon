@@ -119,9 +119,9 @@ void FalconClient::Update() {
 
 void FalconClient::HandleAcknowledgement(const std::string& from_ip, const std::vector<char>& buffer) {
     uint64_t clientId = *reinterpret_cast<const uint64_t*>(&buffer[1]);
-    uint8_t packetId = *reinterpret_cast<const uint8_t*>(&buffer[11]);
     uint32_t streamId = *reinterpret_cast<const uint32_t*>(&buffer[9]);
     bool serverStream = buffer[13] & CLIENT_STREAM_MASK;
+    uint32_t packetId = *reinterpret_cast<const uint32_t*>(&buffer[14]);
 
     // Access the appropriate Stream object and call its Acknowledge method
     if (m_streams[streamId][serverStream]) {
