@@ -126,12 +126,10 @@ void FalconClient::HandleAcknowledgement(const std::string& from_ip, const std::
     // Access the appropriate Stream object and call its Acknowledge method
     if (m_streams[streamId][serverStream]) {
         m_streams[streamId][serverStream]->Acknowledge(packetId);
-        std::cout << "Acknowledgement is received from " << from_ip << " for clientId: " << clientId << std::endl;
     } else {
         std::cerr << "Error: Stream not found for clientId: " << clientId << ", streamId: " << streamId << ", serverStream: " << serverStream << std::endl;
     }
 
-    std::cout << "Acknowledgement received from " << from_ip << " for clientId: " << clientId << std::endl;
 }
 void FalconClient::HandleConnectMessage(const std::vector<char>& buffer) {
     m_clientId = *reinterpret_cast<const UUID*>(&buffer[1]);

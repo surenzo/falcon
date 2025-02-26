@@ -73,11 +73,15 @@ void Stream::OnDataReceived(std::span<const char> Data) {
         packet2.insert(packet2.end(), protocolType);
         packet2.insert(packet2.end(), reinterpret_cast<const char*>(&m_clientId), reinterpret_cast<const char*>(&m_clientId) + sizeof(m_clientId));
         packet2.insert(packet2.end(), reinterpret_cast<const char*>(&m_streamId), reinterpret_cast<const char*>(&m_streamId) + sizeof(m_streamId));
-        packet2.insert(packet2.end(), m_isServer);
+        uint8_t flags = 0;
+        if (m_reliable)
+            flags |= RELIABLE_MASK;
+        if (m_isServer)
+            flags |= CLIENT_STREAM_MASK;
+        packet2.insert(packet2.end(), flags);
         packet2.insert(packet2.end(), reinterpret_cast<const char*>(&packetId), reinterpret_cast<const char*>(&packetId) + sizeof(packetId));
 
         std::cout << protocolType << " " << m_clientId << " " << m_streamId << " " << m_isServer << " " << packetId << std::endl;
-        std::cout << "packet " << packetId << std::endl;
         m_falcon.SendTo(m_ip, m_port, packet2);
     }
 
@@ -95,14 +99,12 @@ void Stream::OnDataReceived(std::span<const char> Data) {
 
 void Stream::Acknowledge(uint32_t packetId) {
     auto it = m_packetMap.find(packetId);
-    std::cout <<"packetid"<<packetId << std::endl;
-    std::cout << "toujours pas vrtaiment ack " << m_packetMap.size() << std::endl;
     if (it != m_packetMap.end()) {
         m_packetMap.erase(it);
-        std::cout << "toujours pas ack " << m_packetMap.size() << std::endl;
+
     }
 
-    std::cout << "Ack " << m_packetMap.size() << std::endl;
+
     //m_ackReceived[packetId] = true;
 }
 

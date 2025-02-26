@@ -26,7 +26,7 @@ int main() {
         auto stream = falcon_client->CreateStream(true);
         stream->OnDataReceivedHandler([](std::span<const char> data) {
             std::string message(data.begin(), data.end());
-            std::cout << "Received message (server stream): " << message << std::endl;
+            std::cout << "Received message ( stream): " << message << std::endl;
         });
         std::cout << "Send Hello There! to server through client stream" << std::endl;
         std::string message = "Hello There!";
@@ -37,15 +37,15 @@ int main() {
     });
 
     // when a stream is created by the server, you send a message through the stream
-    /*falcon_client->OnCreateStream([](std::shared_ptr<Stream> stream) {
+    falcon_client->OnCreateStream([](std::shared_ptr<Stream> stream) {
         stream->OnDataReceivedHandler([](std::span<const char> data) {
             std::string message(data.begin(), data.end());
-            std::cout << "Received message(client stream): " << message << std::endl;
+            std::cout << "Received message(server stream): " << message << std::endl;
         });
         std::cout << "Send Feur to server through server stream" << std::endl;
         std::string message = "Feur";
         stream->SendData(std::span(message.data(), message.size()));
-    });*/
+    });
 
     // we tried directionnal streams but it happenend it produced a conflict with the indentation of nextpacketId, thus
     // we decided to comment it out

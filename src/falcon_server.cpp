@@ -139,13 +139,10 @@ void FalconServer::HandleAcknowledgement(const std::string& from_ip, const std::
     if (m_streams[clientId][streamId][serverStream]) {
         m_streams[clientId][streamId][serverStream]->Acknowledge(packetId);
 
-        std::cout << "Acknowledgement is received from " << from_ip << " for clientId: " << clientId << std::endl;
-
     } else {
         std::cerr << "Error: Stream not found for clientId: " << clientId << ", streamId: " << streamId << ", serverStream: " << serverStream << std::endl;
     }
 
-    std::cout << "Acknowledgement received from " << from_ip << " for clientId: " << clientId << std::endl;
 }
 
 void FalconServer::HandleConnect(const std::string& ip, const std::vector<char>& buffer){
