@@ -240,5 +240,9 @@ void FalconServer::OnCreateStream(std::function<void(std::shared_ptr<Stream>)> h
 }
 
 void FalconServer::CloseStream(const Stream& stream) {
+    auto clientId = stream.GetClientId();
+    auto streamId = stream.GetStreamId();
+    m_streams[clientId].erase(streamId);
+
     stream.~Stream();
 }
